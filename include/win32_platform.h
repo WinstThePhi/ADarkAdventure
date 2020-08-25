@@ -23,4 +23,10 @@ typedef struct window_dimensions
     u16 height;
 } window_dimensions;
 
+typedef struct game_code
+{
+    HMODULE gameCode;
+    game_update_and_render* Game_UpdateAndRender;
+} game_code;
+
 #endif

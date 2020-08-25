@@ -1,6 +1,16 @@
 #include <math.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
 
-#include "renderer.c"
+//custom game engine
+#include "DarkEngine/DarkEngine_layer.h"
+#include "DarkEngine/DarkEngine_memory.h"
+#include "DarkEngine/DarkEngine_platform_interface.h"
+#include "DarkEngine/DarkEngine_renderer.h"
+
+#include "util.h"
+#include "game.h"
 
 internal void
 ProcessOSMessages(game_state* gameState)
@@ -15,7 +25,7 @@ ProcessOSMessages(game_state* gameState)
         {
             case WINDOW_CLOSE:
             {
-                globalGameState.isRunning = 0;
+                gameState->isRunning = 0;
             } break;
             case KEY_PRESS:
             {
@@ -104,40 +114,36 @@ ProcessOSMessages(game_state* gameState)
     ClearEventList(&gameState->eventList);
 }
 
-internal void
-Game_UpdateAndRender(game_state* gameState,
-                     back_buffer* backBuffer)
+GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
 {
-    local_persist u16 x = 0;
-    local_persist u16 y = 0;
+    ProcessOSMessages(gameState);
     
-#define SPEED 2
+#define SPEED 4
     if(gameState->keyData[KEY_W].isDown)
     {
-        y -= SPEED;
+        gameState->y -= SPEED;
     }
     
     if(gameState->keyData[KEY_A].isDown)
     {
-        x -= SPEED;
+        gameState->x -= SPEED;
     }
     
     if(gameState->keyData[KEY_S].isDown)
     {
-        y += SPEED;
+        gameState->y += SPEED;
     }
     
     if(gameState->keyData[KEY_D].isDown)
     {
-        x += SPEED;
+        gameState->x += SPEED;
     }
     
-    DrawRectangle(backBuffer,
-                  0, 0,
-                  backBuffer->width, backBuffer->height,
-                  (v3){.r = 0, .g = 0, .b = 0});
-    DrawRectangle(backBuffer,
-                  x, y,
-                  100, 100,
-                  (v3){.r = 0, .g = 188, .b = 255});
+    DarkEngine_2d_FillBackground(backBuffer,
+                                 (v3){.r = 0, .g = 188, .b = 255});
+    
+    DarkEngine_2d_DrawRectangle(backBuffer,
+                                gameState->x, gameState->y,
+                                100, 100,
+                                (v3){.r = 255, .g = 255, .b = 255});
 }

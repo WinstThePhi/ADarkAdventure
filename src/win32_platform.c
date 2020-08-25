@@ -1,23 +1,103 @@
 #include <windows.h>
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
 
-#include "layer.h"
-#include "platform_interface.h"
-#include "game.h"
-#include "memory.h"
+#include "DarkEngine/DarkEngine_layer.h"
+#include "DarkEngine/DarkEngine_memory.h"
+#include "DarkEngine/DarkEngine_platform_interface.h"
+
 #include "win32_platform.h"
 #include "util.h"
 
+#define BIG_BOI_ALLOC_SIZE Megabytes(20)
+
 global game_state globalGameState;
 global win32_back_buffer globalWin32BackBuffer;
+global WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
 
-#include "memory.c"
-#include "platform_interface.c"
-#include "game.c"
+internal void 
+ToggleFullscreen(HWND window)
+{
+    DWORD style = GetWindowLong(window, GWL_STYLE);
+    if((style & WS_OVERLAPPEDWINDOW) && !globalGameState.isFullscreen) {
+        MONITORINFO mi = { sizeof(mi) };
+        if (GetWindowPlacement(window, &g_wpPrev) &&
+            GetMonitorInfo(MonitorFromWindow(window,
+                                             MONITOR_DEFAULTTOPRIMARY), &mi)) 
+        {
+            SetWindowLong(window, GWL_STYLE,
+                          style & ~WS_OVERLAPPEDWINDOW);
+            SetWindowPos(window, HWND_TOP,
+                         mi.rcMonitor.left, mi.rcMonitor.top,
+                         mi.rcMonitor.right - mi.rcMonitor.left,
+                         mi.rcMonitor.bottom - mi.rcMonitor.top,
+                         SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+            globalGameState.isFullscreen = 1;
+        }
+    } 
+    else 
+    {
+        SetWindowLong(window, GWL_STYLE,
+                      style | WS_OVERLAPPEDWINDOW);
+        SetWindowPlacement(window, &g_wpPrev);
+        SetWindowPos(window, NULL, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        globalGameState.isFullscreen = 0;
+    }
+}
 
-#define BIG_BOI_ALLOC_SIZE Megabytes(20)
+internal FILETIME 
+Win32_GetFileLastModifiedTime(char* filename)
+{
+    HANDLE fileHandle = CreateFileA(filename,
+                                    GENERIC_READ,
+                                    0,
+                                    0,
+                                    OPEN_ALWAYS,
+                                    FILE_ATTRIBUTE_NORMAL,
+                                    0);
+    FILETIME result = {0};
+    GetFileTime(fileHandle,
+                0,
+                0,
+                &result);
+    
+    CloseHandle(fileHandle);
+    
+    return result;
+}
+
+internal game_code
+Win32_LoadGameCode(char* dllName)
+{
+    game_code gameCodeLoad;
+    
+    char tempDLL[] = "ADarkAdventure_Temp.dll";
+    
+    CopyFile(dllName,
+             tempDLL,
+             0);
+    
+    gameCodeLoad.gameCode = LoadLibraryA(tempDLL);
+    gameCodeLoad.Game_UpdateAndRender = 
+        (game_update_and_render*)GetProcAddress(gameCodeLoad.gameCode,
+                                                "Game_UpdateAndRender");
+    if(!gameCodeLoad.Game_UpdateAndRender)
+    {
+        gameCodeLoad.Game_UpdateAndRender = Game_UpdateAndRenderStub;
+    }
+    
+    return gameCodeLoad;
+}
+
+internal void
+Win32_UnloadGameCode(game_code* gameCode)
+{
+    FreeLibrary(gameCode->gameCode);
+    gameCode->gameCode = 0;
+    gameCode->Game_UpdateAndRender = Game_UpdateAndRenderStub;
+}
 
 internal window_dimensions
 Win32_GetWindowDimensions(HWND window)
@@ -128,9 +208,45 @@ Win32_DefaultWindowCallback(HWND window,
                 
                 switch(VKcode)
                 {
+                    case 'Q':
+                    {
+                        keyCode = KEY_Q;
+                    } break;
                     case 'W':
                     {
                         keyCode = KEY_W;
+                    } break;
+                    case 'E':
+                    {
+                        keyCode = KEY_E;
+                    } break;
+                    case 'R':
+                    {
+                        keyCode = KEY_R;
+                    } break;
+                    case 'T':
+                    {
+                        keyCode = KEY_T;
+                    } break;
+                    case 'Y':
+                    {
+                        keyCode = KEY_Y;
+                    } break;
+                    case 'U':
+                    {
+                        keyCode = KEY_U;
+                    } break;
+                    case 'I':
+                    {
+                        keyCode = KEY_I;
+                    } break;
+                    case 'O':
+                    {
+                        keyCode = KEY_O;
+                    } break;
+                    case 'P':
+                    {
+                        keyCode = KEY_P;
                     } break;
                     case 'A':
                     {
@@ -144,6 +260,58 @@ Win32_DefaultWindowCallback(HWND window,
                     {
                         keyCode = KEY_D;
                     } break;
+                    case 'F':
+                    {
+                        keyCode = KEY_F;
+                    } break;
+                    case 'G':
+                    {
+                        keyCode = KEY_G;
+                    } break;
+                    case 'H':
+                    {
+                        keyCode = KEY_H;
+                    } break;
+                    case 'J':
+                    {
+                        keyCode = KEY_J;
+                    } break;
+                    case 'K':
+                    {
+                        keyCode = KEY_K;
+                    } break;
+                    case 'L':
+                    {
+                        keyCode = KEY_L;
+                    } break;
+                    case 'Z':
+                    {
+                        keyCode = KEY_Z;
+                    } break;
+                    case 'X':
+                    {
+                        keyCode = KEY_X;
+                    } break;
+                    case 'C':
+                    {
+                        keyCode = KEY_C;
+                    } break;
+                    case 'V':
+                    {
+                        keyCode = KEY_V;
+                    } break;
+                    case 'B':
+                    {
+                        keyCode = KEY_B;
+                    } break;
+                    case 'N':
+                    {
+                        keyCode = KEY_N;
+                    } break;
+                    case 'M':
+                    {
+                        keyCode = KEY_M;
+                    } break;
                     case VK_UP:
                     {
                         keyCode = KEY_UP;
@@ -152,13 +320,26 @@ Win32_DefaultWindowCallback(HWND window,
                     {
                         keyCode = KEY_LEFT;
                     } break;
+                    case VK_RIGHT:
+                    {
+                        keyCode = KEY_RIGHT;
+                    } break;
                     case VK_DOWN:
                     {
                         keyCode = KEY_DOWN;
                     } break;
-                    case VK_RIGHT:
+                    case VK_ESCAPE:
                     {
-                        keyCode = KEY_RIGHT;
+                        keyCode = KEY_ESC;
+                    } break;
+                    case VK_SPACE:
+                    {
+                        keyCode = KEY_SPACE;
+                    } break;
+                    case VK_F11:
+                    {
+                        if(isDown)
+                            ToggleFullscreen(window);
                     } break;
                 }
                 
@@ -217,6 +398,7 @@ WinMain(HINSTANCE hInstance,
     setvbuf(stdout, 0, _IONBF, 0);
     setvbuf(stderr, 0, _IONBF, 0);
     
+    
     // NOTE(winston): Big boi memory alloc
     void* memory = VirtualAlloc(0,
                                 BIG_BOI_ALLOC_SIZE,
@@ -268,13 +450,27 @@ WinMain(HINSTANCE hInstance,
             
             HDC hdc = GetDC(window);
             
+            game_code gameCode = Win32_LoadGameCode("ADarkAdventure.dll");
+            
+            FILETIME lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+            
             while(globalGameState.isRunning)
             {
-                Win32_ProcessMessageQueue(window);
-                ProcessOSMessages(&globalGameState);
+                FILETIME currentWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
                 
-                Game_UpdateAndRender(&globalGameState,
-                                     &backBuffer);
+                if(CompareFileTime(&lastWriteTime,
+                                   &currentWriteTime))
+                {
+                    Win32_UnloadGameCode(&gameCode);
+                    gameCode = Win32_LoadGameCode("ADarkAdventure.dll");
+                    lastWriteTime = currentWriteTime;
+                }
+                
+                Win32_ProcessMessageQueue(window);
+                
+                gameCode.Game_UpdateAndRender(&globalGameState,
+                                              &backBuffer,
+                                              &arena);
                 
                 window_dimensions dimension = Win32_GetWindowDimensions(window);
                 

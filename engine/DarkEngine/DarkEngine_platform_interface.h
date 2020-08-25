@@ -50,4 +50,36 @@ typedef struct key_data
 #undef NUM_OF_KEYS
 #undef NUM_OF_OS_EVENT
 
+typedef struct game_state
+{
+    b32 isRunning;
+    OS_event_list eventList;
+    key_data keyData[KEY_MAX];
+    b32 isFullscreen;
+    
+    u16 x;
+    u16 y;
+} game_state;
+
+typedef struct back_buffer
+{
+    void* memory;
+    
+    u16 height;
+    u16 width;
+    
+    u16 pitch;
+} back_buffer;
+
+#define GAME_UPDATE_AND_RENDER(name) void name(game_state* gameState, back_buffer* backBuffer, MemoryArena* arena)
+
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+
+GAME_UPDATE_AND_RENDER(Game_UpdateAndRenderStub)
+{
+    
+}
+
+#include "DarkEngine/DarkEngine_platform_interface.c"
+
 #endif

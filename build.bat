@@ -1,17 +1,32 @@
 @echo off
 
-set includeDir=..\include\
-set defaultCompilerFlags=/I %includeDir% /nologo /Zi /FC /O2 /MP
+set executable=ADarkAdventure.exe
+set game=ADarkAdventure.dll
+
+set includes=/I ..\include\ /I ..\engine\
+
+set defaultCompilerFlags=%includes% /nologo /O2 /Zi /FC /MP
+
+set platformLinkSettings=/link /out:%executable% user32.lib gdi32.lib /incremental:no
+
+set gameLinkSettings=/link /DLL /EXPORT:Game_UpdateAndRender /out:%game% 
+
 set warnings=/W4 /WX /wd4201 /wd4100
-set defines=
+
+REM set defines=
 REM /DTESTING
 
-set executable=ADarkAdventure.exe
+set platformCode=..\src\win32_platform.c
+set gameCode=..\src\game.c
 
 if not exist build mkdir build
 
 pushd build
 
-cl %defaultCompilerFlags% %warnings% %defines% ..\src\win32_platform.c /link /out:%executable% user32.lib gdi32.lib
+if NOT "%1"=="reload" (
+	cl %defaultCompilerFlags% %warnings% %platformCode% %platformLinkSettings%
+)
+
+cl %defaultCompilerFlags% %warnings% %gameCode% %gameLinkSettings%
 
 popd

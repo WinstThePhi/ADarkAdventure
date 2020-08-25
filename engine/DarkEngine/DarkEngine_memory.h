@@ -1,5 +1,5 @@
-#ifndef MEMORY_H
-#define MEMORY_H
+#ifndef DARKENGINE_MEMORY_H
+#define DARKENGINE_MEMORY_H
 
 // NOTE(winston): sum very epic memory management
 
@@ -13,5 +13,7 @@ struct MemoryArena
     u32 size;
     u32 sizeLeft;
 };
+
+#include "DarkEngine/DarkEngine_memory.c"
 
 #endif
