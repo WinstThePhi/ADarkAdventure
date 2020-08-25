@@ -2,3 +2,5 @@
 *.4coder
 *.ilk
 *.obj
+*.exe
+*.dll
