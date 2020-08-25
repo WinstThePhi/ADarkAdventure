@@ -27,6 +27,7 @@ typedef struct game_code
 {
     HMODULE gameCode;
     game_update_and_render* Game_UpdateAndRender;
+    start_game* Game_Start;
 } game_code;
 
 #endif

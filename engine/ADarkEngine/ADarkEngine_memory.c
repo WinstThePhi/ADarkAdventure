@@ -1,3 +1,5 @@
+#include <string.h>
+#include <assert.h>
 
 internal MemoryArena
 new_arena(void* memory, u32 size)

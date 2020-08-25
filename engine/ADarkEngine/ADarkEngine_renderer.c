@@ -1,3 +1,4 @@
+#include <math.h>
 
 #define BYTES_PER_PIXEL 4
 

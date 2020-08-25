@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "DarkEngine/DarkEngine_layer.h"
-#include "DarkEngine/DarkEngine_memory.h"
-#include "DarkEngine/DarkEngine_platform_interface.h"
+#include "ADarkEngine/ADarkEngine_layer.h"
+#include "ADarkEngine/ADarkEngine_memory.h"
+#include "ADarkEngine/ADarkEngine_platform_interface.h"
 
-#include "win32_platform.h"
-#include "util.h"
+#include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
+#include "ADarkEngine/ADarkEngine_util.h"
 
 #define BIG_BOI_ALLOC_SIZE Megabytes(20)
 
@@ -73,7 +73,7 @@ Win32_LoadGameCode(char* dllName)
 {
     game_code gameCodeLoad;
     
-    char tempDLL[] = "ADarkAdventure_Temp.dll";
+    char tempDLL[] = "ADarkAdventure_temp.dll";
     
     CopyFile(dllName,
              tempDLL,
@@ -83,9 +83,18 @@ Win32_LoadGameCode(char* dllName)
     gameCodeLoad.Game_UpdateAndRender = 
         (game_update_and_render*)GetProcAddress(gameCodeLoad.gameCode,
                                                 "Game_UpdateAndRender");
+    gameCodeLoad.Game_Start = 
+        (start_game*)GetProcAddress(gameCodeLoad.gameCode,
+                                    "Game_Start");
+    
     if(!gameCodeLoad.Game_UpdateAndRender)
     {
         gameCodeLoad.Game_UpdateAndRender = Game_UpdateAndRenderStub;
+    }
+    
+    if(!gameCodeLoad.Game_Start)
+    {
+        gameCodeLoad.Game_Start = Game_StartStub;
     }
     
     return gameCodeLoad;
@@ -454,8 +463,17 @@ WinMain(HINSTANCE hInstance,
             
             FILETIME lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
             
+            globalGameState.fpsCap = 60;
+            
+            gameCode.Game_Start(&globalGameState,
+                                &backBuffer,
+                                &arena);
+            
+            
             while(globalGameState.isRunning)
             {
+                f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
+                
                 FILETIME currentWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
                 
                 if(CompareFileTime(&lastWriteTime,
@@ -480,20 +498,17 @@ WinMain(HINSTANCE hInstance,
                                    dimension.width,
                                    dimension.height);
 #endif 
-                //UpdateWindow(window);
-                
                 f32 currentTime = GetTime_MS(performanceFrequency);
                 f32 timeElapsed = currentTime - lastTime;
-                
-                //printf("%f\n", timeElapsed);
-                if(timeElapsed < 16.667f)
+#ifdef FPS_CAP
+                if(timeElapsed < msCap)
                 {
-                    Sleep((DWORD)(16.667f - timeElapsed));
+                    Sleep((DWORD)(msCap - timeElapsed));
                 }
-                
+#endif
                 lastTime = currentTime;
             }
-            
+            ReleaseDC(window, hdc);
             DestroyWindow(window);
         }
         else

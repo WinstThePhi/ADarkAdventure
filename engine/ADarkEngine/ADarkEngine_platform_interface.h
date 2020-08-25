@@ -53,12 +53,16 @@ typedef struct key_data
 typedef struct game_state
 {
     b32 isRunning;
+    
     OS_event_list eventList;
     key_data keyData[KEY_MAX];
+    
     b32 isFullscreen;
     
     u16 x;
     u16 y;
+    
+    u16 fpsCap;
 } game_state;
 
 typedef struct back_buffer
@@ -80,6 +84,17 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRenderStub)
     
 }
 
-#include "DarkEngine/DarkEngine_platform_interface.c"
+#define START_GAME(name) void name(game_state* gameState, \
+back_buffer* backBuffer, \
+MemoryArena* arena)
+
+typedef START_GAME(start_game);
+
+START_GAME(Game_StartStub)
+{
+    
+}
+
+#include "ADarkEngine/ADarkEngine_platform_interface.c"
 
 #endif
