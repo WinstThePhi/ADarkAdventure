@@ -5,6 +5,7 @@
 #include "ADarkEngine/ADarkEngine_layer.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
 #include "ADarkEngine/ADarkEngine_platform_interface.h"
+#include "ADarkEngine/ADarkEngine_FileIO.h"
 
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
 #include "ADarkEngine/ADarkEngine_util.h"
@@ -69,7 +70,9 @@ Win32_GetFileLastModifiedTime(char* filename)
 }
 
 internal game_code
-Win32_LoadGameCode(char* dllName)
+Win32_LoadGameCode(MemoryArena* arena,
+                   back_buffer* backBuffer,
+                   char* dllName)
 {
     game_code gameCodeLoad;
     
@@ -86,6 +89,10 @@ Win32_LoadGameCode(char* dllName)
     gameCodeLoad.Game_Start = 
         (start_game*)GetProcAddress(gameCodeLoad.gameCode,
                                     "Game_Start");
+    gameCodeLoad.Game_End = 
+        (end_game*)GetProcAddress(gameCodeLoad.gameCode,
+                                  "Game_End");
+    
     
     if(!gameCodeLoad.Game_UpdateAndRender)
     {
@@ -97,15 +104,34 @@ Win32_LoadGameCode(char* dllName)
         gameCodeLoad.Game_Start = Game_StartStub;
     }
     
+    if(!gameCodeLoad.Game_End)
+    {
+        gameCodeLoad.Game_End = Game_EndStub;
+    }
+    
+    gameCodeLoad.Game_Start(&globalGameState,
+                            backBuffer,
+                            arena);
+    gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+    
     return gameCodeLoad;
 }
 
 internal void
-Win32_UnloadGameCode(game_code* gameCode)
+Win32_UnloadGameCode(game_code* gameCode,
+                     MemoryArena* arena,
+                     back_buffer* backBuffer)
 {
+    gameCode->Game_End(&globalGameState,
+                       backBuffer,
+                       arena);
+    
     FreeLibrary(gameCode->gameCode);
     gameCode->gameCode = 0;
     gameCode->Game_UpdateAndRender = Game_UpdateAndRenderStub;
+    gameCode->Game_Start = Game_StartStub;
+    gameCode->Game_End = Game_EndStub;
+    
 }
 
 internal window_dimensions
@@ -205,6 +231,8 @@ Win32_DefaultWindowCallback(HWND window,
             EndPaint(window,
                      &paintStruct);
         } break;
+        case WM_SYSKEYUP:
+        case WM_SYSKEYDOWN:
         case WM_KEYUP:
         case WM_KEYDOWN:
         {
@@ -407,14 +435,27 @@ WinMain(HINSTANCE hInstance,
     setvbuf(stdout, 0, _IONBF, 0);
     setvbuf(stderr, 0, _IONBF, 0);
     
-    
     // NOTE(winston): Big boi memory alloc
     void* memory = VirtualAlloc(0,
                                 BIG_BOI_ALLOC_SIZE,
                                 MEM_COMMIT,
                                 PAGE_READWRITE);
     
+    DarkEngine_ClearFile("../engine/ADarkEngine/error_log/error_log.txt");
+    
+    if(!memory)
+    {
+        DarkEngine_LogError("Failed allocate memory.");
+        return -1;
+    }
+    
     MemoryArena arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
+    
+    if(!arena.size)
+    {
+        DarkEngine_LogError("Failed to create memory arena.");
+        return -1;
+    }
     
     globalWin32BackBuffer = new_back_buffer(&arena, 1280, 720);
     
@@ -424,7 +465,6 @@ WinMain(HINSTANCE hInstance,
     windowClass.hInstance = hInstance;
     windowClass.hCursor = LoadCursor(0, IDC_ARROW);
     windowClass.lpszClassName = "Window Class";
-    
     
     LARGE_INTEGER performanceFrequency;
     QueryPerformanceFrequency(&performanceFrequency);
@@ -459,16 +499,15 @@ WinMain(HINSTANCE hInstance,
             
             HDC hdc = GetDC(window);
             
-            game_code gameCode = Win32_LoadGameCode("ADarkAdventure.dll");
+            game_code gameCode = Win32_LoadGameCode(&arena,
+                                                    &backBuffer,
+                                                    "ADarkAdventure.dll");
             
-            FILETIME lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+            gameCode.lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
             
             globalGameState.fpsCap = 60;
             
-            gameCode.Game_Start(&globalGameState,
-                                &backBuffer,
-                                &arena);
-            
+            i32 count = 0;
             
             while(globalGameState.isRunning)
             {
@@ -476,12 +515,16 @@ WinMain(HINSTANCE hInstance,
                 
                 FILETIME currentWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
                 
-                if(CompareFileTime(&lastWriteTime,
+                if(CompareFileTime(&gameCode.lastWriteTime,
                                    &currentWriteTime))
                 {
-                    Win32_UnloadGameCode(&gameCode);
-                    gameCode = Win32_LoadGameCode("ADarkAdventure.dll");
-                    lastWriteTime = currentWriteTime;
+                    ++count;
+                    Win32_UnloadGameCode(&gameCode,
+                                         &arena,
+                                         &backBuffer);
+                    gameCode = Win32_LoadGameCode(&arena,
+                                                  &backBuffer,
+                                                  "ADarkAdventure.dll");
                 }
                 
                 Win32_ProcessMessageQueue(window);
@@ -508,19 +551,23 @@ WinMain(HINSTANCE hInstance,
 #endif
                 lastTime = currentTime;
             }
+            
+            printf("%d", count);
+            Win32_UnloadGameCode(&gameCode,
+                                 &arena,
+                                 &backBuffer);
+            
             ReleaseDC(window, hdc);
             DestroyWindow(window);
         }
         else
         {
-            // TODO(winston): logging
-            fprintf(stderr, "Failed to create window.\n");
+            DarkEngine_LogError("Failed to create window.");
         }
     }
     else
     {
-        // TODO(winston): logging
-        fprintf(stderr, "Failed to register window class.\n");
+        DarkEngine_LogError("Failed to register window class.");
     }
     
     VirtualFree(arena.memory, 0, MEM_RELEASE);

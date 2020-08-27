@@ -4,8 +4,14 @@
 internal char* DarkEngine_ReadFile(char* filename);
 
 internal void DarkEngine_WriteFile(char* filename, 
-                                   char* contents, 
-                                   u32 contentsCount);
+                                   char* contents);
+
+internal void DarkEngine_WriteFileAppend(char* filename, 
+                                         char* contents);
+
+internal void DarkEngine_LogError(char* error);
+
+internal void DarkEngine_ClearFile(char* filename);
 
 #include "ADarkEngine/ADarkEngine_FileIO.c"
 

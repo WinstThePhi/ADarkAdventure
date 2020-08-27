@@ -26,8 +26,12 @@ typedef struct window_dimensions
 typedef struct game_code
 {
     HMODULE gameCode;
+    FILETIME lastWriteTime;
+    
     game_update_and_render* Game_UpdateAndRender;
     start_game* Game_Start;
+    end_game* Game_End;
+    
 } game_code;
 
 #endif

@@ -95,6 +95,17 @@ START_GAME(Game_StartStub)
     
 }
 
+#define END_GAME(name) void name(game_state* gameState, \
+back_buffer* backBuffer, \
+MemoryArena* arena)
+
+typedef END_GAME(end_game);
+
+END_GAME(Game_EndStub)
+{
+    
+}
+
 #include "ADarkEngine/ADarkEngine_platform_interface.c"
 
 #endif

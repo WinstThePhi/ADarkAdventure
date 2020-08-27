@@ -5,13 +5,14 @@ set game=ADarkAdventure.dll
 
 set includes=/I ..\include\ /I ..\engine\
 
-set defaultCompilerFlags=%includes% /nologo /O2 /Zi /FC /MP
+set defaultCompilerFlags=%includes% /nologo /DEBUG /FC /MP
 
-set platformLinkSettings=/link /out:%executable% user32.lib gdi32.lib /incremental:no
+set platformLinkSettings=/link /out:%executable% user32.lib gdi32.lib /incremental:no /DEBUG
 
-set gameLinkSettings=/link /DLL /EXPORT:Game_UpdateAndRender /EXPORT:Game_Start /out:%game% 
+set exports=/EXPORT:Game_UpdateAndRender /EXPORT:Game_Start /EXPORT:Game_End
+set gameLinkSettings=/link /DLL %exports% /out:%game%
 
-set warnings=/W4 /WX /wd4201 /wd4100 /wd4189
+set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996
 
 set defines=/DFPS_CAP
 
