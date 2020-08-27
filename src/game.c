@@ -1,4 +1,6 @@
 
+#define ERROR_LOG_PATH "../data/game_error.txt"
+
 //custom game engine
 #include "ADarkEngine/ADarkEngine_layer.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
@@ -13,15 +15,11 @@
 // NOTE(winston): runs when the game starts
 START_GAME(Game_Start)
 {
+    DarkEngine_ClearFile(ERROR_LOG_PATH);
+    
     DarkEngine_2d_FillBackground(backBuffer,
                                  (v3){.r = 0, .g = 0, .b = 0});
     gameState->fpsCap = 60;
-    
-    char data[] = "Baba smell stinky!\n";
-    DarkEngine_ClearFile("../data/output.txt");
-    for(i32 i = 0; i < 20; ++i)
-        DarkEngine_WriteFileAppend("../data/output.txt",
-                                   data);
 }
 
 // NOTE(winston): runs every frame

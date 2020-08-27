@@ -37,11 +37,11 @@ DarkEngine_WriteFileAppend(char* filename,
 internal void
 DarkEngine_LogError(char* error)
 {
-    DarkEngine_WriteFileAppend("../engine/ADarkEngine/error_log/error_log.txt",
+    DarkEngine_WriteFileAppend(ERROR_LOG_PATH,
                                "ERROR: ");
-    DarkEngine_WriteFileAppend("../engine/ADarkEngine/error_log/error_log.txt",
+    DarkEngine_WriteFileAppend(ERROR_LOG_PATH,
                                error);
-    DarkEngine_WriteFileAppend("../engine/ADarkEngine/error_log/error_log.txt",
+    DarkEngine_WriteFileAppend(ERROR_LOG_PATH,
                                "\n");
 }
 

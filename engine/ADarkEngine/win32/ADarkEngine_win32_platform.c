@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define ERROR_LOG_PATH "../data/platform_error.txt"
+
 #include "ADarkEngine/ADarkEngine_layer.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
 #include "ADarkEngine/ADarkEngine_platform_interface.h"
 #include "ADarkEngine/ADarkEngine_FileIO.h"
-
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
 #include "ADarkEngine/ADarkEngine_util.h"
 
@@ -441,7 +442,7 @@ WinMain(HINSTANCE hInstance,
                                 MEM_COMMIT,
                                 PAGE_READWRITE);
     
-    DarkEngine_ClearFile("../engine/ADarkEngine/error_log/error_log.txt");
+    DarkEngine_ClearFile(ERROR_LOG_PATH);
     
     if(!memory)
     {
@@ -507,8 +508,6 @@ WinMain(HINSTANCE hInstance,
             
             globalGameState.fpsCap = 60;
             
-            i32 count = 0;
-            
             while(globalGameState.isRunning)
             {
                 f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
@@ -518,7 +517,6 @@ WinMain(HINSTANCE hInstance,
                 if(CompareFileTime(&gameCode.lastWriteTime,
                                    &currentWriteTime))
                 {
-                    ++count;
                     Win32_UnloadGameCode(&gameCode,
                                          &arena,
                                          &backBuffer);
@@ -552,7 +550,6 @@ WinMain(HINSTANCE hInstance,
                 lastTime = currentTime;
             }
             
-            printf("%d", count);
             Win32_UnloadGameCode(&gameCode,
                                  &arena,
                                  &backBuffer);
