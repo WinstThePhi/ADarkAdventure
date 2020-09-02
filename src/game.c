@@ -5,8 +5,8 @@
 #include "ADarkEngine/ADarkEngine_layer.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
 #include "ADarkEngine/ADarkEngine_platform_interface.h"
-#include "ADarkEngine/ADarkEngine_renderer.h"
 #include "ADarkEngine/ADarkEngine_FileIO.h"
+#include "ADarkEngine/ADarkEngine_renderer.h"
 #include "ADarkEngine/ADarkEngine_util.h"
 
 #include "game.h"
@@ -15,11 +15,14 @@
 // NOTE(winston): runs when the game starts
 START_GAME(Game_Start)
 {
+    gameState->fpsCap = 60;
+    
     DarkEngine_ClearFile(ERROR_LOG_PATH);
     
     DarkEngine_2d_FillBackground(backBuffer,
-                                 (v3){.r = 0, .g = 0, .b = 0});
-    gameState->fpsCap = 60;
+                                 (v3){.r = 0, .g = 188, .b = 255});
+    
+    gameState->smileyFace = DarkEngine_LoadBMP(arena, "../data/sample.bmp");
 }
 
 // NOTE(winston): runs every frame
@@ -47,16 +50,22 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
     {
         gameState->x += SPEED;
     }
+#undef SPEED
     
+#if 0
     DarkEngine_2d_FillBackground(backBuffer,
                                  (v3){.r = 0, .g = 188, .b = 255});
     
     DarkEngine_2d_DrawRectangle(backBuffer,
                                 gameState->x, gameState->y,
                                 100, 100,
-                                (v3){.r = 255, .g = 255, .b = 255});
+                                (v3){.r = 0, .g = 0, .b = 0});
+#endif
+    
+    DarkEngine_2d_DrawBMP(backBuffer, &gameState->smileyFace);
 }
 
+// NOTE(winston): Runs when unloaded or ended
 END_GAME(Game_End)
 {
     

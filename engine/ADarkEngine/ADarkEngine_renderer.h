@@ -29,6 +29,12 @@ internal void DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
                                           u16 width, u16 height,
                                           v3 color);
 
+internal back_buffer DarkEngine_LoadBMP(memory_arena* arena, 
+                                        char* filename);
+
+internal void DarkEngine_2d_DrawBMP(back_buffer* dest, 
+                                    back_buffer* src);
+
 #include "ADarkEngine/ADarkEngine_renderer.c"
 
 #endif 

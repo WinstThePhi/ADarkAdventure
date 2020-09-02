@@ -5,13 +5,23 @@
 #define ERROR_LOG_PATH "../data/platform_error.txt"
 
 #include "ADarkEngine/ADarkEngine_layer.h"
+#include "ADarkEngine/ADarkEngine_util.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
 #include "ADarkEngine/ADarkEngine_platform_interface.h"
-#include "ADarkEngine/ADarkEngine_FileIO.h"
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
-#include "ADarkEngine/ADarkEngine_util.h"
+#include "ADarkEngine/ADarkEngine_FileIO.h"
 
-#define BIG_BOI_ALLOC_SIZE Megabytes(20)
+#ifndef WIDTH
+#define WIDTH 1280
+#endif
+
+#ifndef HEIGHT
+#define HEIGHT 720
+#endif
+
+#ifndef BIG_BOI_ALLOC_SIZE
+#define BIG_BOI_ALLOC_SIZE Gigabytes(1)
+#endif 
 
 global game_state globalGameState;
 global win32_back_buffer globalWin32BackBuffer;
@@ -22,7 +32,7 @@ ToggleFullscreen(HWND window)
 {
     DWORD style = GetWindowLong(window, GWL_STYLE);
     if((style & WS_OVERLAPPEDWINDOW) && !globalGameState.isFullscreen) {
-        MONITORINFO mi = { sizeof(mi) };
+        MONITORINFO mi = {sizeof(mi)};
         if (GetWindowPlacement(window, &g_wpPrev) &&
             GetMonitorInfo(MonitorFromWindow(window,
                                              MONITOR_DEFAULTTOPRIMARY), &mi)) 
@@ -71,8 +81,8 @@ Win32_GetFileLastModifiedTime(char* filename)
 }
 
 internal game_code
-Win32_LoadGameCode(MemoryArena* arena,
-                   back_buffer* backBuffer,
+Win32_LoadGameCode(memory_arena* arena, 
+                   back_buffer* backBuffer, 
                    char* dllName)
 {
     game_code gameCodeLoad;
@@ -113,14 +123,14 @@ Win32_LoadGameCode(MemoryArena* arena,
     gameCodeLoad.Game_Start(&globalGameState,
                             backBuffer,
                             arena);
-    gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+    gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
     
     return gameCodeLoad;
 }
 
 internal void
 Win32_UnloadGameCode(game_code* gameCode,
-                     MemoryArena* arena,
+                     memory_arena* arena,
                      back_buffer* backBuffer)
 {
     gameCode->Game_End(&globalGameState,
@@ -150,7 +160,7 @@ Win32_GetWindowDimensions(HWND window)
 }
 
 internal win32_back_buffer
-new_back_buffer(MemoryArena* arena,
+new_back_buffer(memory_arena* arena,
                 u16 width, 
                 u16 height)
 {
@@ -179,6 +189,7 @@ Win32_UpdateWindow(HDC hdc,
                    u16 windowWidth,
                    u16 windowHeight)
 {
+#ifdef STRETCH
     StretchDIBits(hdc,
                   0, 0,
                   windowWidth,
@@ -190,6 +201,19 @@ Win32_UpdateWindow(HDC hdc,
                   &backBuffer->bitmapInfo,
                   DIB_RGB_COLORS,
                   SRCCOPY);
+#else
+    StretchDIBits(hdc,
+                  0, 0,
+                  backBuffer->width,
+                  backBuffer->height,
+                  0, 0,
+                  backBuffer->width,
+                  backBuffer->height,
+                  backBuffer->memory,
+                  &backBuffer->bitmapInfo,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
+#endif
 }
 
 internal LRESULT 
@@ -217,6 +241,16 @@ Win32_DefaultWindowCallback(HWND window,
             PushOSEvent(&globalGameState.eventList,
                         WINDOW_CLOSE);
         } break;
+#ifdef HIDE_CURSOR
+        case WM_SETCURSOR:
+        {
+            if(LOWORD(lParam) == HTCLIENT)
+                SetCursor(0);
+            else
+                SetCursor(LoadCursor(0, IDC_ARROW));
+            return TRUE;
+        } break;
+#endif
         case WM_PAINT:
         {
             window_dimensions dimension = Win32_GetWindowDimensions(window);
@@ -224,6 +258,7 @@ Win32_DefaultWindowCallback(HWND window,
             PAINTSTRUCT paintStruct = {0};
             HDC paintDC = BeginPaint(window,
                                      &paintStruct);
+            
             Win32_UpdateWindow(paintDC,
                                &globalWin32BackBuffer,
                                dimension.width,
@@ -376,8 +411,10 @@ Win32_DefaultWindowCallback(HWND window,
                     } break;
                     case VK_F11:
                     {
+#ifdef FULLSCREEN
                         if(isDown)
                             ToggleFullscreen(window);
+#endif
                     } break;
                 }
                 
@@ -450,7 +487,7 @@ WinMain(HINSTANCE hInstance,
         return -1;
     }
     
-    MemoryArena arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
+    memory_arena arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
     
     if(!arena.size)
     {
@@ -458,7 +495,7 @@ WinMain(HINSTANCE hInstance,
         return -1;
     }
     
-    globalWin32BackBuffer = new_back_buffer(&arena, 1280, 720);
+    globalWin32BackBuffer = new_back_buffer(&arena, WIDTH, HEIGHT);
     
     WNDCLASSA windowClass = {0};
     windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -472,15 +509,22 @@ WinMain(HINSTANCE hInstance,
     
     if(RegisterClass(&windowClass))
     {
+        DWORD dwStyle = (WS_OVERLAPPED | WS_CAPTION | 
+                         WS_SYSMENU | WS_MINIMIZEBOX | 
+#ifdef MAXIMIZE
+                         WS_MAXIMIZEBOX | 
+#endif
+                         WS_VISIBLE);
+        
         HWND window = 
             CreateWindowExA(0,
                             "Window Class",
                             "A Dark Adventure",
-                            WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                            dwStyle,
                             CW_USEDEFAULT,
                             CW_USEDEFAULT,
-                            1280,
-                            720,
+                            WIDTH,
+                            HEIGHT,
                             0,
                             0,
                             0,
@@ -497,22 +541,25 @@ WinMain(HINSTANCE hInstance,
             backBuffer.height = globalWin32BackBuffer.height;
             backBuffer.width = globalWin32BackBuffer.width;
             backBuffer.pitch = globalWin32BackBuffer.pitch;
+            backBuffer.bytesPerPixel = 4;
             
             HDC hdc = GetDC(window);
+            char dllName[] = "game.dll";
+            
+            globalGameState.fpsCap = 60;
             
             game_code gameCode = Win32_LoadGameCode(&arena,
                                                     &backBuffer,
-                                                    "ADarkAdventure.dll");
+                                                    dllName);
             
-            gameCode.lastWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+            gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
             
-            globalGameState.fpsCap = 60;
             
             while(globalGameState.isRunning)
             {
                 f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
                 
-                FILETIME currentWriteTime = Win32_GetFileLastModifiedTime("ADarkAdventure.dll");
+                FILETIME currentWriteTime = Win32_GetFileLastModifiedTime(dllName);
                 
                 if(CompareFileTime(&gameCode.lastWriteTime,
                                    &currentWriteTime))
@@ -522,7 +569,7 @@ WinMain(HINSTANCE hInstance,
                                          &backBuffer);
                     gameCode = Win32_LoadGameCode(&arena,
                                                   &backBuffer,
-                                                  "ADarkAdventure.dll");
+                                                  dllName);
                 }
                 
                 Win32_ProcessMessageQueue(window);

@@ -1,6 +1,6 @@
 
 internal OS_event_list
-GenerateEventList(MemoryArena* arena, u32 size)
+GenerateEventList(memory_arena* arena, u32 size)
 {
     OS_event_list result;
     

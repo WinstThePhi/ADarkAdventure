@@ -7,4 +7,8 @@
 
 #define ArrayCount(value) (sizeof(value) / sizeof(value [0]))
 
+inline b32 isPowerOfTwo();
+
+#include "ADarkEngine/ADarkEngine_util.c"
+
 #endif
