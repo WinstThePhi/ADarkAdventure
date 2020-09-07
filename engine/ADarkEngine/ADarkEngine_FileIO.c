@@ -32,7 +32,6 @@ DarkEngine_WriteFile(char* filename,
         fprintf(file, contents);
     }
     
-    
     fclose(file);
 }
 

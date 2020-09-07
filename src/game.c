@@ -4,8 +4,8 @@
 //custom game engine
 #include "ADarkEngine/ADarkEngine_layer.h"
 #include "ADarkEngine/ADarkEngine_memory.h"
-#include "ADarkEngine/ADarkEngine_platform_interface.h"
 #include "ADarkEngine/ADarkEngine_FileIO.h"
+#include "ADarkEngine/ADarkEngine_platform_interface.h"
 #include "ADarkEngine/ADarkEngine_renderer.h"
 #include "ADarkEngine/ADarkEngine_util.h"
 
@@ -15,14 +15,19 @@
 // NOTE(winston): runs when the game starts
 START_GAME(Game_Start)
 {
+    DisableBuffering(stdout);
+    DisableBuffering(stderr);
+    
     gameState->fpsCap = 60;
     
     DarkEngine_ClearFile(ERROR_LOG_PATH);
-    
     DarkEngine_2d_FillBackground(backBuffer,
                                  (v3){.r = 0, .g = 188, .b = 255});
+    gameState->tiger = DarkEngine_LoadBMP(arena, "../data/smiley.bmp");
     
-    gameState->smileyFace = DarkEngine_LoadBMP(arena, "../data/sample.bmp");
+    //DarkEngine_PrintBackBuffer(&gameState->tiger);
+    
+    DarkEngine_2d_DrawBMP(backBuffer, &gameState->tiger);
 }
 
 // NOTE(winston): runs every frame
@@ -30,7 +35,7 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
 {
     ProcessOSMessages(gameState);
     
-#define SPEED 4
+#define SPEED 6
     if(gameState->keyData[KEY_W].isDown)
     {
         gameState->y -= SPEED;
@@ -51,18 +56,16 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
         gameState->x += SPEED;
     }
 #undef SPEED
-    
 #if 0
     DarkEngine_2d_FillBackground(backBuffer,
                                  (v3){.r = 0, .g = 188, .b = 255});
-    
-    DarkEngine_2d_DrawRectangle(backBuffer,
-                                gameState->x, gameState->y,
-                                100, 100,
-                                (v3){.r = 0, .g = 0, .b = 0});
 #endif
-    
-    DarkEngine_2d_DrawBMP(backBuffer, &gameState->smileyFace);
+#if 0
+    DarkEngine_2d_DrawRectangle(backBuffer,
+                                backBuffer->width / 2 - 50, backBuffer->height / 2 - 50,
+                                100, 100,
+                                (v3){.r = 255, .g = 255, .b = 255});
+#endif
 }
 
 // NOTE(winston): Runs when unloaded or ended

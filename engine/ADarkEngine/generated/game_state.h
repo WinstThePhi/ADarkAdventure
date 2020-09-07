@@ -4,7 +4,6 @@
 typedef struct game_state
 {
 //do not remove these
-
 b32 isRunning;
 OS_event_list eventList;
 key_data keyData[KEY_MAX];
@@ -14,7 +13,8 @@ u16 fpsCap;
 u16 x;
 u16 y;
 
-back_buffer smileyFace;
+back_buffer tiger;
+
 } game_state;
 
 #endif

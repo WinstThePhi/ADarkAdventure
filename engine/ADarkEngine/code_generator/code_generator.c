@@ -96,8 +96,6 @@ int main(i32 argCount, char** args)
         
         GenerateGameStateStruct(path,
                                 fileContents);
-        
-        
     }
     
     free(memory);

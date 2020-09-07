@@ -2,6 +2,7 @@
 
 #define BYTES_PER_PIXEL 4
 
+// NOTE(winston): software rendering
 inline void
 DarkEngine_DrawPixel(back_buffer* backBuffer, 
                      u16 x, u16 y,
@@ -81,16 +82,6 @@ DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
         row += backBuffer->pitch;
     }
 }
-#if 0
-internal void 
-DarkEngine_DrawLine(back_buffer* backBuffer, 
-                    i32 x1, i32 y1, 
-                    i32 x2, i32 y2,
-                    v3 color) 
-{ 
-    
-} 
-#endif
 
 // TODO(winston): pretty broken here
 internal back_buffer
@@ -126,12 +117,70 @@ DarkEngine_LoadBMP(memory_arena* arena,
     return result;
 }
 
+internal void
+DarkEngine_PrintBackBuffer(back_buffer* backBuffer)
+{
+    if(backBuffer)
+    {
+        printf("Memory: %p\n", backBuffer->memory);
+        printf("Pitch: %d\n", backBuffer->pitch);
+        printf("Bytes Per Pixel: %d\n", backBuffer->bytesPerPixel);
+        printf("Width: %d\n", backBuffer->width);
+        printf("Height: %d\n", backBuffer->height);
+    }
+}
+
+// TODO(winston): there is a grid-like pattern in the picture that is undesirable
 internal void 
 DarkEngine_2d_DrawBMP(back_buffer* dest, 
                       back_buffer* src)
 {
+    Assert(dest);
     Assert(src);
+    
     u32 size = src->bytesPerPixel * src->width * src->height;
     
-    MemoryCopy(dest->memory, src->memory, size);
+    u8* destRow = (u8*)dest->memory;
+    u8* srcRow = (u8*)src->memory + (src->width * src->bytesPerPixel) + ((src->height - 1) * src->pitch);
+    
+    for(i32 y = 0; y < src->height; ++y)
+    {
+        u8* srcPixel = (u8*)srcRow;
+        u32* destPixel = (u32*)destRow;
+        
+        for(i32 x = 0; x < src->width; ++x)
+        {
+            u8 blue = *srcPixel++;
+            u8 green = *srcPixel++;
+            u8 red = *srcPixel++;
+            
+            *destPixel++ = (red << 16) | (green << 8) | (blue);
+        }
+        
+        srcRow -= src->pitch;
+        destRow += dest->pitch;
+    }
 }
+
+#ifdef WEIRD
+internal void
+RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
+{
+    
+    u8* row = (u8*)backBuffer->memory;
+    
+    for(u16 y = 0; y < backBuffer->height; ++y)
+    {
+        u32* pixel = (u32*)row;
+        
+        for(u16 x = 0; x < backBuffer->width; ++x)
+        {
+            u8 green = (u8)(x + xOffset);
+            u8 blue = (u8)(y + yOffset);
+            *pixel++ = (green << 16) | blue;
+        }
+        
+        row += backBuffer->pitch;
+    }
+}
+#endif

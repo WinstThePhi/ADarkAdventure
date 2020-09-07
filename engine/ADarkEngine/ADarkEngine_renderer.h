@@ -17,6 +17,23 @@ typedef union v3
     };
 } v3;
 
+
+#pragma pack(push, 1)
+typedef struct bitmap_header
+{
+    u16 fileType;
+    u32 fileSize;
+    u16 reserved_1;
+    u16 reserved_2;
+    u32 bitmapOffset;
+    u32 size;
+    i32 width;
+    i32 height;
+    u16 planes;
+    u16 bitsPerPixel;
+} bitmap_header;
+#pragma pack(pop)
+
 inline void DarkEngine_DrawPixel(back_buffer* backBuffer, 
                                  u16 x, u16 y,
                                  v3 color);

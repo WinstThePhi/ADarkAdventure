@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <assert.h>
+#include <GL/gl.h>
 
 #define ERROR_LOG_PATH "../data/platform_error.txt"
 
@@ -10,6 +11,7 @@
 #include "ADarkEngine/ADarkEngine_platform_interface.h"
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
 #include "ADarkEngine/ADarkEngine_FileIO.h"
+#include "ADarkEngine/win32/ADarkEngine_win32_opengl.c"
 
 #ifndef WIDTH
 #define WIDTH 1280
@@ -470,8 +472,8 @@ WinMain(HINSTANCE hInstance,
         LPSTR CMDLine, 
         INT cmdShow)
 {
-    setvbuf(stdout, 0, _IONBF, 0);
-    setvbuf(stderr, 0, _IONBF, 0);
+    DisableBuffering(stdout);
+    DisableBuffering(stderr);
     
     // NOTE(winston): Big boi memory alloc
     void* memory = VirtualAlloc(0,
@@ -554,6 +556,7 @@ WinMain(HINSTANCE hInstance,
             
             gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
             
+            //Win32_InitOpenGL(window);
             
             while(globalGameState.isRunning)
             {
@@ -588,11 +591,20 @@ WinMain(HINSTANCE hInstance,
 #endif 
                 f32 currentTime = GetTime_MS(performanceFrequency);
                 f32 timeElapsed = currentTime - lastTime;
+                
 #ifdef FPS_CAP
                 if(timeElapsed < msCap)
                 {
                     Sleep((DWORD)(msCap - timeElapsed));
                 }
+#endif
+#if 0
+                char title[64];
+                
+                snprintf(title, 64, "A Dark Adventure - %.02f ms", timeElapsed);
+                
+                SetWindowTextA(window,
+                               title);
 #endif
                 lastTime = currentTime;
             }
