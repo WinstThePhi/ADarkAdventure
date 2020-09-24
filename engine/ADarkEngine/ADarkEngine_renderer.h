@@ -1,6 +1,24 @@
 #ifndef _DARK_ENGINE_RENDERER_H
 #define _DARK_ENGINE_RENDERER_H
 
+typedef union v4
+{
+    struct
+    {
+        u16 x;
+        u16 y;
+        u16 z;
+        u16 w;
+    };
+    struct
+    {
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 a;
+    };
+} v4;
+
 typedef union v3
 {
     struct
@@ -18,6 +36,15 @@ typedef union v3
 } v3;
 
 
+typedef union v2
+{
+    struct
+    {
+        u16 x;
+        u16 y;
+    };
+} v2;
+
 #pragma pack(push, 1)
 typedef struct bitmap_header
 {
@@ -34,17 +61,33 @@ typedef struct bitmap_header
 } bitmap_header;
 #pragma pack(pop)
 
-inline void DarkEngine_DrawPixel(back_buffer* backBuffer, 
-                                 u16 x, u16 y,
-                                 v3 color);
+typedef struct pixel_render_group
+{
+    back_buffer* backBuffer;
+    u16 x;
+    u16 y;
+    v3 color;
+} pixel_render_group;
 
-internal void DarkEngine_2d_FillBackground(back_buffer* backBuffer,
-                                           v3 color);
+typedef struct background_render_group
+{
+    back_buffer* backBuffer;
+    v3 color;
+} background_render_group;
+
+inline void DarkEngine_DrawPixel(void* temp);
+
+internal void* DarkEngine_2d_FillBackground(void* temp);
 
 internal void DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
                                           u16 x, u16 y,
                                           u16 width, u16 height,
                                           v3 color);
+
+internal void DarkEngine_2d_DrawRectangleOutline(back_buffer* backBuffer,
+                                                 u16 x, u16 y,
+                                                 u16 width, u16 height,
+                                                 v3 color);
 
 internal back_buffer DarkEngine_LoadBMP(memory_arena* arena, 
                                         char* filename);
@@ -52,6 +95,9 @@ internal back_buffer DarkEngine_LoadBMP(memory_arena* arena,
 internal void DarkEngine_2d_DrawBMP(back_buffer* dest, 
                                     back_buffer* src);
 
-#include "ADarkEngine/ADarkEngine_renderer.c"
+internal void DarkEngine_Queue2d_FillBackgroundSolid(memory_arena* arena,
+                                                     worker_thread_queue* workerThreadQueue,
+                                                     back_buffer* backBuffer,
+                                                     v3 color);
 
 #endif 

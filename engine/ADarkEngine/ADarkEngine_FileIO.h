@@ -18,6 +18,4 @@ internal void DarkEngine_LogError(char* error);
 
 internal void DarkEngine_ClearFile(char* filename);
 
-#include "ADarkEngine/ADarkEngine_FileIO.c"
-
 #endif

@@ -1,27 +1,69 @@
 #include <math.h>
 
+#include "ADarkEngine/ADarkEngine_renderer.h"
+
 #define BYTES_PER_PIXEL 4
 
 // NOTE(winston): software rendering
 inline void
-DarkEngine_DrawPixel(back_buffer* backBuffer, 
-                     u16 x, u16 y,
-                     v3 color)
+DarkEngine_DrawPixel(void* temp)
 {
-    u32* pixel = (u32*)((char*)backBuffer->memory + (x * BYTES_PER_PIXEL) + (backBuffer->pitch * y));
+    pixel_render_group* renderGroup = (pixel_render_group*)renderGroup;
     
-    *pixel = color.r << 16 | color.g << 8 | color.b;
+    u32* pixel = (u32*)((char*)renderGroup->backBuffer->memory + (renderGroup->x * BYTES_PER_PIXEL) + (renderGroup->backBuffer->pitch * renderGroup->y));
+    
+    *pixel = (renderGroup->color).r << 16 | (renderGroup->color).g << 8 | (renderGroup->color).b;
 }
 
-internal void
-DarkEngine_2d_FillBackground(back_buffer* backBuffer,
-                             v3 color)
+internal void*
+DarkEngine_2d_FillBackground(void* temp)
 {
+    background_render_group* renderGroup = (background_render_group*)temp;
+    
     u16 xMin = 0;
     u16 yMin = 0;
     
-    u16 xMax = backBuffer->width;
-    u16 yMax = backBuffer->height;
+    u16 xMax = renderGroup->backBuffer->width;
+    u16 yMax = renderGroup->backBuffer->height;
+    
+    if(xMin < 0)
+        xMin = 0;
+    if(yMin < 0)
+        yMin = 0;
+    if(xMax > renderGroup->backBuffer->width)
+        xMax = renderGroup->backBuffer->width;
+    if(yMax > renderGroup->backBuffer->height)
+        yMax = renderGroup->backBuffer->height;
+    
+    u8* row = 
+        (u8*)((u32*)renderGroup->backBuffer->memory + (yMin * renderGroup->backBuffer->pitch));
+    
+    for(u16 yCount = yMin; yCount < yMax; ++yCount)
+    {
+        u32* pixel = (u32*)((u32*)row + (u32)(xMin * BYTES_PER_PIXEL));
+        
+        for(u16 xCount = xMin; xCount < xMax; ++xCount)
+        {
+            *pixel++ = (renderGroup->color).r << 16 | (renderGroup->color).g << 8 | (renderGroup->color).b;
+        }
+        
+        row += renderGroup->backBuffer->pitch;
+    }
+    
+    return 0;
+}
+
+internal void
+DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
+                            u16 x, u16 y,
+                            u16 width, u16 height,
+                            v3 color)
+{
+    u16 xMin = x;
+    u16 yMin = y;
+    
+    u16 xMax = x + width;
+    u16 yMax = y + height;
     
     if(xMin < 0)
         xMin = 0;
@@ -32,11 +74,11 @@ DarkEngine_2d_FillBackground(back_buffer* backBuffer,
     if(yMax > backBuffer->height)
         yMax = backBuffer->height;
     
-    u8* row = (u8*)((u32*)backBuffer->memory + (yMin * backBuffer->pitch));
+    u8* row = (u8*)((u8*)backBuffer->memory + (yMin * backBuffer->pitch));
     
     for(u16 yCount = yMin; yCount < yMax; ++yCount)
     {
-        u32* pixel = (u32*)((u32*)row + (u32)(xMin * BYTES_PER_PIXEL));
+        u32* pixel = (u32*)(row + (xMin * BYTES_PER_PIXEL));
         
         for(u16 xCount = xMin; xCount < xMax; ++xCount)
         {
@@ -47,11 +89,12 @@ DarkEngine_2d_FillBackground(back_buffer* backBuffer,
     }
 }
 
+
 internal void
-DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
-                            u16 x, u16 y,
-                            u16 width, u16 height,
-                            v3 color)
+DarkEngine_2d_DrawRectangleOutline(back_buffer* backBuffer,
+                                   u16 x, u16 y,
+                                   u16 width, u16 height,
+                                   v3 color)
 {
     u16 xMin = x;
     u16 yMin = y;
@@ -137,28 +180,30 @@ DarkEngine_2d_DrawBMP(back_buffer* dest,
 {
     Assert(dest);
     Assert(src);
-    
-    u32 size = src->bytesPerPixel * src->width * src->height;
-    
-    u8* destRow = (u8*)dest->memory;
-    u8* srcRow = (u8*)src->memory + (src->width * src->bytesPerPixel) + ((src->height - 1) * src->pitch);
-    
-    for(i32 y = 0; y < src->height; ++y)
+    if(src->bytesPerPixel == 3)
     {
-        u8* srcPixel = (u8*)srcRow;
-        u32* destPixel = (u32*)destRow;
+        u32 size = src->bytesPerPixel * src->width * src->height;
         
-        for(i32 x = 0; x < src->width; ++x)
+        u8* destRow = (u8*)dest->memory;
+        u8* srcRow = (u8*)src->memory + (src->width * src->bytesPerPixel) + ((src->height - 1) * src->pitch);
+        
+        for(i32 y = 0; y < src->height; ++y)
         {
-            u8 blue = *srcPixel++;
-            u8 green = *srcPixel++;
-            u8 red = *srcPixel++;
+            u8* srcPixel = (u8*)srcRow;
+            u32* destPixel = (u32*)destRow;
             
-            *destPixel++ = (red << 16) | (green << 8) | (blue);
+            for(i32 x = 0; x < src->width; ++x)
+            {
+                u8 blue = *srcPixel++;
+                u8 green = *srcPixel++;
+                u8 red = *srcPixel++;
+                
+                *destPixel++ = (red << 16) | (green << 8) | (blue);
+            }
+            
+            srcRow -= src->pitch;
+            destRow += dest->pitch;
         }
-        
-        srcRow -= src->pitch;
-        destRow += dest->pitch;
     }
 }
 
@@ -166,7 +211,6 @@ DarkEngine_2d_DrawBMP(back_buffer* dest,
 internal void
 RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
 {
-    
     u8* row = (u8*)backBuffer->memory;
     
     for(u16 y = 0; y < backBuffer->height; ++y)
@@ -184,3 +228,20 @@ RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
     }
 }
 #endif
+
+// NOTE(winston): renderer queueing interface
+internal void 
+DarkEngine_Queue2d_FillBackgroundSolid(memory_arena* arena,
+                                       worker_thread_queue* workerThreadQueue,
+                                       back_buffer* backBuffer,
+                                       v3 color)
+{
+    background_render_group* renderGroup = 
+        ArenaAlloc(arena, sizeof(background_render_group));
+    
+    renderGroup->backBuffer = backBuffer;
+    renderGroup->color = color;
+    
+    PushWorkQueue(arena, workerThreadQueue, 
+                  DarkEngine_2d_FillBackground, (void*)&renderGroup);
+}

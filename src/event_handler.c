@@ -35,6 +35,10 @@ ProcessOSMessages(game_state* gameState)
                     {
                         gameState->keyData[KEY_D].isDown = 1;
                     } break;
+                    case KEY_SPACE:
+                    {
+                        gameState->keyData[KEY_SPACE].isDown = 1;
+                    } break;
                     case KEY_UP:
                     {
                         gameState->keyData[KEY_UP].isDown = 1;
@@ -72,6 +76,10 @@ ProcessOSMessages(game_state* gameState)
                     case KEY_D:
                     {
                         gameState->keyData[KEY_D].isDown = 0;
+                    } break;
+                    case KEY_SPACE:
+                    {
+                        gameState->keyData[KEY_SPACE].isDown = 0;
                     } break;
                     case KEY_UP:
                     {

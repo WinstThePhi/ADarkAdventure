@@ -63,35 +63,27 @@ typedef struct back_buffer
 
 #include "ADarkEngine/generated/game_state.h"
 
-#define GAME_UPDATE_AND_RENDER(name) void name(game_state* gameState, back_buffer* backBuffer, memory_arena* arena)
+#define GAME_ARGS game_state* gameState, back_buffer* backBuffer, memory_arena* arena, worker_thread_queue* queue
 
+#define GAME_UPDATE_AND_RENDER(name) void name(GAME_ARGS)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 
-GAME_UPDATE_AND_RENDER(Game_UpdateAndRenderStub)
-{
-    
-}
-
-#define START_GAME(name) void name(game_state* gameState, \
-back_buffer* backBuffer, \
-memory_arena* arena)
-
+#define START_GAME(name) void name(GAME_ARGS)
 typedef START_GAME(start_game);
 
-START_GAME(Game_StartStub)
-{
-    
-}
-
-#define END_GAME(name) void name(game_state* gameState, \
-back_buffer* backBuffer, \
-memory_arena* arena)
-
+#define END_GAME(name) void name(GAME_ARGS)
 typedef END_GAME(end_game);
 
 END_GAME(Game_EndStub)
 {
-    
+}
+
+START_GAME(Game_StartStub)
+{
+}
+
+GAME_UPDATE_AND_RENDER(Game_UpdateAndRenderStub)
+{
 }
 
 internal OS_event_list GenerateEventList(memory_arena* arena, u32 size);
@@ -104,7 +96,5 @@ internal void PushOSKeyEvent(OS_event_list* list,
                              key_code keyCode);
 
 internal void ClearEventList(OS_event_list* list);
-
-#include "ADarkEngine/ADarkEngine_platform_interface.c"
 
 #endif

@@ -11,6 +11,4 @@
 
 inline b32 isPowerOfTwo();
 
-#include "ADarkEngine/ADarkEngine_util.c"
-
 #endif

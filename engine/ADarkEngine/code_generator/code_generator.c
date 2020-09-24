@@ -5,9 +5,9 @@
 #define LOG_TO_STDERR
 
 #include "ADarkEngine\ADarkEngine_layer.h"
-#include "ADarkEngine\ADarkEngine_memory.h"
-#include "ADarkEngine\ADarkEngine_util.h"
-#include "ADarkEngine\ADarkEngine_FileIO.h"
+#include "ADarkEngine\ADarkEngine_memory.c"
+#include "ADarkEngine\ADarkEngine_util.c"
+#include "ADarkEngine\ADarkEngine_FileIO.c"
 
 #define BIG_BOI_ALLOC_SIZE Megabytes(20)
 

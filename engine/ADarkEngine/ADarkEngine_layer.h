@@ -13,6 +13,8 @@
 
 #define Assert assert
 
+#define loop for(;;)
+
 typedef int8_t  i8;
 typedef int16_t i16;
 typedef int32_t i32;

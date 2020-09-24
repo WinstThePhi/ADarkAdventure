@@ -10,7 +10,7 @@ set game=game.dll
 
 set includes=/I ..\include\ /I ..\engine\
 
-set defaultCompilerFlags=%includes% /O2 /nologo /Zi /FC /MP
+set defaultCompilerFlags=%includes% /O2 /nologo /Zi /FC /MP 
 
 set platformLinkSettings=/link user32.lib gdi32.lib opengl32.lib /incremental:no /RELEASE
 
@@ -19,7 +19,7 @@ set gameLinkSettings=/link /DLL %exports% /out:%game% /RELEASE
 
 set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996
  
-set defines=/DFPS_CAP /DSTRETCH /DHIDE_CURSOR 
+set defines=/DFPS_CAP /DSTRETCH /DHIDE_CURSOR /DQUEUE_TEST
  
 set platformCode=..\engine\ADarkEngine\win32\ADarkEngine_win32_platform.c
 set gameCode=..\src\game.c

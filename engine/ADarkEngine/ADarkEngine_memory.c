@@ -1,6 +1,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include "ADarkEngine/ADarkEngine_memory.h"
+
 internal memory_arena
 new_arena(void* memory, u32 size)
 {

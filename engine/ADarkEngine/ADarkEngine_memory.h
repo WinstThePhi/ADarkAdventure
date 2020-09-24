@@ -39,6 +39,4 @@ internal void temp_arena_end(temp_memory* tempArena);
 
 internal void* TempAlloc(temp_memory* tempArena, u32 sizeToAlloc);
 
-#include "ADarkEngine/ADarkEngine_memory.c"
-
 #endif

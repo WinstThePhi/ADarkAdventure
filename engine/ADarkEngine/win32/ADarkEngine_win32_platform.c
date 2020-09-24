@@ -6,12 +6,13 @@
 #define ERROR_LOG_PATH "../data/platform_error.txt"
 
 #include "ADarkEngine/ADarkEngine_layer.h"
-#include "ADarkEngine/ADarkEngine_util.h"
-#include "ADarkEngine/ADarkEngine_memory.h"
-#include "ADarkEngine/ADarkEngine_platform_interface.h"
+
+#include "ADarkEngine/ADarkEngine_util.c"
+#include "ADarkEngine/ADarkEngine_memory.c"
+#include "ADarkEngine/ADarkEngine_FileIO.c"
+#include "ADarkEngine/ADarkEngine_WorkerThreadInterface.c"
+#include "ADarkEngine/ADarkEngine_platform_interface.c"
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
-#include "ADarkEngine/ADarkEngine_FileIO.h"
-#include "ADarkEngine/win32/ADarkEngine_win32_opengl.c"
 
 #ifndef WIDTH
 #define WIDTH 1280
@@ -85,7 +86,8 @@ Win32_GetFileLastModifiedTime(char* filename)
 internal game_code
 Win32_LoadGameCode(memory_arena* arena, 
                    back_buffer* backBuffer, 
-                   char* dllName)
+                   char* dllName,
+                   worker_thread_queue* queue)
 {
     game_code gameCodeLoad;
     
@@ -124,7 +126,9 @@ Win32_LoadGameCode(memory_arena* arena,
     
     gameCodeLoad.Game_Start(&globalGameState,
                             backBuffer,
-                            arena);
+                            arena,
+                            queue);
+    
     gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
     
     return gameCodeLoad;
@@ -133,11 +137,13 @@ Win32_LoadGameCode(memory_arena* arena,
 internal void
 Win32_UnloadGameCode(game_code* gameCode,
                      memory_arena* arena,
-                     back_buffer* backBuffer)
+                     back_buffer* backBuffer,
+                     worker_thread_queue* queue)
 {
     gameCode->Game_End(&globalGameState,
                        backBuffer,
-                       arena);
+                       arena,
+                       queue);
     
     FreeLibrary(gameCode->gameCode);
     gameCode->gameCode = 0;
@@ -454,8 +460,10 @@ Win32_ProcessMessageQueue(HWND window)
     }
 }
 
-inline f32 
-GetTime_MS(LARGE_INTEGER performanceFrequency)
+global LARGE_INTEGER performanceFrequency = {0};
+
+internal f32 
+GetTime_MS()
 {
     LARGE_INTEGER time;
     QueryPerformanceCounter(&time);
@@ -466,6 +474,33 @@ GetTime_MS(LARGE_INTEGER performanceFrequency)
     return (f32)MS_elapsed;
 }
 
+internal void 
+ThreadSleep(i32 numOfMS)
+{
+    Sleep((DWORD)numOfMS);
+}
+
+#ifdef QUEUE_TEST
+internal void*
+PrintWinston(void* placeholder)
+{
+    printf("Hi Winston!\n");
+    return 0;
+}
+#endif 
+
+internal OS_call
+GenerateOSCalls()
+{
+    OS_call result = {0};
+    
+    result.GetTime_MS = GetTime_MS;
+    result.ThreadSleep = ThreadSleep;
+    
+    return result;
+}
+
+#define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
 int
 WinMain(HINSTANCE hInstance, 
         HINSTANCE prevInstance,
@@ -506,7 +541,6 @@ WinMain(HINSTANCE hInstance,
     windowClass.hCursor = LoadCursor(0, IDC_ARROW);
     windowClass.lpszClassName = "Window Class";
     
-    LARGE_INTEGER performanceFrequency;
     QueryPerformanceFrequency(&performanceFrequency);
     
     if(RegisterClass(&windowClass))
@@ -531,12 +565,30 @@ WinMain(HINSTANCE hInstance,
                             0,
                             0,
                             0);
+        
         if(window)
         {
+            DWORD threadContext = 0;
+            
+            OS_call osCall = GenerateOSCalls();
+            
+            worker_thread_queue workerThreadQueue = 
+                new_worker_thread_queue(&arena);
+            
+            workerThreadQueue.osCall = osCall;
+            
+            HANDLE workerThread = CreateThread(0,
+                                               0,
+                                               (WIN32_THREAD_FUNC_TEMPLATE)ProcessWorkQueue,
+                                               (void*)&workerThreadQueue,
+                                               0,
+                                               &threadContext);
+            
+            
             globalGameState.isRunning = 1;
             globalGameState.eventList = GenerateEventList(&arena, 64);
             
-            f32 lastTime = GetTime_MS(performanceFrequency);
+            f32 lastTime = GetTime_MS();
             
             back_buffer backBuffer = {0};
             backBuffer.memory = globalWin32BackBuffer.memory;
@@ -552,7 +604,8 @@ WinMain(HINSTANCE hInstance,
             
             game_code gameCode = Win32_LoadGameCode(&arena,
                                                     &backBuffer,
-                                                    dllName);
+                                                    dllName,
+                                                    &workerThreadQueue);
             
             gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
             
@@ -569,17 +622,20 @@ WinMain(HINSTANCE hInstance,
                 {
                     Win32_UnloadGameCode(&gameCode,
                                          &arena,
-                                         &backBuffer);
+                                         &backBuffer,
+                                         &workerThreadQueue);
                     gameCode = Win32_LoadGameCode(&arena,
                                                   &backBuffer,
-                                                  dllName);
+                                                  dllName,
+                                                  &workerThreadQueue);
                 }
                 
                 Win32_ProcessMessageQueue(window);
                 
                 gameCode.Game_UpdateAndRender(&globalGameState,
                                               &backBuffer,
-                                              &arena);
+                                              &arena,
+                                              &workerThreadQueue);
                 
                 window_dimensions dimension = Win32_GetWindowDimensions(window);
                 
@@ -589,7 +645,7 @@ WinMain(HINSTANCE hInstance,
                                    dimension.width,
                                    dimension.height);
 #endif 
-                f32 currentTime = GetTime_MS(performanceFrequency);
+                f32 currentTime = GetTime_MS();
                 f32 timeElapsed = currentTime - lastTime;
                 
 #ifdef FPS_CAP
@@ -598,6 +654,7 @@ WinMain(HINSTANCE hInstance,
                     Sleep((DWORD)(msCap - timeElapsed));
                 }
 #endif
+                
 #if 0
                 char title[64];
                 
@@ -611,7 +668,12 @@ WinMain(HINSTANCE hInstance,
             
             Win32_UnloadGameCode(&gameCode,
                                  &arena,
-                                 &backBuffer);
+                                 &backBuffer,
+                                 &workerThreadQueue);
+            
+            workerThreadQueue.breakCommand = 1;
+            
+            WaitForSingleObject(workerThread, INFINITE);
             
             ReleaseDC(window, hdc);
             DestroyWindow(window);

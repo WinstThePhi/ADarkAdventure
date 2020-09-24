@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "ADarkEngine/ADarkEngine_FileIO.h"
+
 internal char* 
 DarkEngine_ReadFile(memory_arena* arena,
                     char* filename)
