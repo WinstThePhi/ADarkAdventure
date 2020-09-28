@@ -28,14 +28,18 @@
 
 global game_state globalGameState;
 global win32_back_buffer globalWin32BackBuffer;
-global WINDOWPLACEMENT g_wpPrev = { sizeof(g_wpPrev) };
+global WINDOWPLACEMENT g_wpPrev = {0};
 
 internal void 
 ToggleFullscreen(HWND window)
 {
+    g_wpPrev.length = sizeof(g_wpPrev);
+    
     DWORD style = GetWindowLong(window, GWL_STYLE);
     if((style & WS_OVERLAPPEDWINDOW) && !globalGameState.isFullscreen) {
-        MONITORINFO mi = {sizeof(mi)};
+        MONITORINFO mi = {0};
+        mi.cbSize = sizeof(mi);
+        
         if (GetWindowPlacement(window, &g_wpPrev) &&
             GetMonitorInfo(MonitorFromWindow(window,
                                              MONITOR_DEFAULTTOPRIMARY), &mi)) 
@@ -393,6 +397,46 @@ Win32_DefaultWindowCallback(HWND window,
                     {
                         keyCode = KEY_M;
                     } break;
+                    case '1':
+                    {
+                        keyCode = KEY_1;
+                    } break;
+                    case '2':
+                    {
+                        keyCode = KEY_2;
+                    } break;
+                    case '3':
+                    {
+                        keyCode = KEY_3;
+                    } break;
+                    case '4':
+                    {
+                        keyCode = KEY_4;
+                    } break;
+                    case '5':
+                    {
+                        keyCode = KEY_5;
+                    } break;
+                    case '6':
+                    {
+                        keyCode = KEY_6;
+                    } break;
+                    case '7':
+                    {
+                        keyCode = KEY_7;
+                    } break;
+                    case '8':
+                    {
+                        keyCode = KEY_8;
+                    } break;
+                    case '9':
+                    {
+                        keyCode = KEY_9;
+                    } break;
+                    case '0':
+                    {
+                        keyCode = KEY_0;
+                    } break;
                     case VK_UP:
                     {
                         keyCode = KEY_UP;
@@ -500,7 +544,6 @@ GenerateOSCalls()
     return result;
 }
 
-#define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
 int
 WinMain(HINSTANCE hInstance, 
         HINSTANCE prevInstance,
@@ -577,13 +620,14 @@ WinMain(HINSTANCE hInstance,
             
             workerThreadQueue.osCall = osCall;
             
+#define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
             HANDLE workerThread = CreateThread(0,
                                                0,
                                                (WIN32_THREAD_FUNC_TEMPLATE)ProcessWorkQueue,
                                                (void*)&workerThreadQueue,
                                                0,
                                                &threadContext);
-            
+#undef WIN32_THREAD_FUNC_TEMPLATE
             
             globalGameState.isRunning = 1;
             globalGameState.eventList = GenerateEventList(&arena, 64);
@@ -645,6 +689,7 @@ WinMain(HINSTANCE hInstance,
                                    dimension.width,
                                    dimension.height);
 #endif 
+                
                 f32 currentTime = GetTime_MS();
                 f32 timeElapsed = currentTime - lastTime;
                 
@@ -673,10 +718,10 @@ WinMain(HINSTANCE hInstance,
             
             workerThreadQueue.breakCommand = 1;
             
-            WaitForSingleObject(workerThread, INFINITE);
-            
             ReleaseDC(window, hdc);
             DestroyWindow(window);
+            
+            WaitForSingleObject(workerThread, INFINITE);
         }
         else
         {

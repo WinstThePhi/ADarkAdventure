@@ -29,11 +29,6 @@ START_GAME(Game_Start)
                                  (v3){.r = 0, .g = 188, .b = 255});
 #endif
     
-    DarkEngine_Queue2d_FillBackgroundSolid(arena,
-                                           queue,
-                                           backBuffer,
-                                           (v3){.r = 0, .g = 188, .b = 255});
-    
     gameState->tiger = DarkEngine_LoadBMP(arena, "../data/tiger.bmp");
     
     //DarkEngine_PrintBackBuffer(&gameState->tiger);
@@ -85,6 +80,11 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
         gameState->y = 500;
         velY = 0;
     }
+    
+    DarkEngine_Queue2d_FillBackgroundSolid(arena,
+                                           queue,
+                                           backBuffer,
+                                           (v3){.r = 0, .g = 188, .b = 255});
     
 #if 0
     DarkEngine_2d_FillBackground(backBuffer,

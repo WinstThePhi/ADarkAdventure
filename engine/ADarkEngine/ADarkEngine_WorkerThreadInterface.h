@@ -39,7 +39,7 @@ typedef struct worker_thread_queue
 } worker_thread_queue;
 
 internal void PushWorkQueue(memory_arena* arena,
-                            worker_thread_queue* workerThreadQueue, void* function, void* parameter);
+                            worker_thread_queue* workerThreadQueue, void* (*function)(void*), void* parameter);
 
 internal worker_thread_queue new_worker_thread_queue(memory_arena* arena);
 

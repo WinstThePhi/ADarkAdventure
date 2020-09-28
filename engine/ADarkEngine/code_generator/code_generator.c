@@ -60,7 +60,7 @@ GenerateGameStateStruct(char* gameStatePath,
     fprintf(file, "#ifndef GAME_STATE_H\n#define GAME_STATE_H\n\n");
     fprintf(file, "typedef struct game_state\n");
     fprintf(file, "{\n");
-    fprintf(file, additionalInfo);
+    fprintf(file, "%s", additionalInfo);
     fprintf(file, "\n} game_state;");
     fprintf(file, "\n\n#endif");
     

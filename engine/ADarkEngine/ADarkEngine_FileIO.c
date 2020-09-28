@@ -29,12 +29,11 @@ DarkEngine_WriteFile(char* filename,
 {
     FILE* file = fopen(filename, "w");
     
-    if(file && contents)
+    if(file)
     {
-        fprintf(file, contents);
+        fprintf(file, "%s", contents);
+        fclose(file);
     }
-    
-    fclose(file);
 }
 
 internal void 
@@ -45,7 +44,7 @@ DarkEngine_WriteFileAppend(char* filename,
     
     if(file && contents)
     {
-        fprintf(file, contents);
+        fprintf(file, "%s", contents);
     }
     
     fclose(file);
@@ -63,7 +62,7 @@ DarkEngine_LogError(char* error)
                                "\n");
 #else 
     fprintf(stderr, "ERROR: ");
-    fprintf(stderr, error);
+    fprintf(stderr, "%s", error);
     fprintf(stderr, "\n");
 #endif
 }

@@ -1,3 +1,5 @@
+// TODO(winston): change to a custom stack allocator
+#include <stdlib.h>
 #include <math.h>
 
 #include "ADarkEngine/ADarkEngine_renderer.h"
@@ -8,7 +10,7 @@
 inline void
 DarkEngine_DrawPixel(void* temp)
 {
-    pixel_render_group* renderGroup = (pixel_render_group*)renderGroup;
+    pixel_render_group* renderGroup = (pixel_render_group*)temp;
     
     u32* pixel = (u32*)((char*)renderGroup->backBuffer->memory + (renderGroup->x * BYTES_PER_PIXEL) + (renderGroup->backBuffer->pitch * renderGroup->y));
     
@@ -236,12 +238,15 @@ DarkEngine_Queue2d_FillBackgroundSolid(memory_arena* arena,
                                        back_buffer* backBuffer,
                                        v3 color)
 {
-    background_render_group* renderGroup = 
-        ArenaAlloc(arena, sizeof(background_render_group));
+    // TODO(winston): change to use a custom stack allocator 
+    //background_render_group* renderGroup = 
+    //ArenaAlloc(arena, sizeof(background_render_group));
+    
+    background_render_group* renderGroup = malloc(sizeof(background_render_group));
     
     renderGroup->backBuffer = backBuffer;
     renderGroup->color = color;
     
     PushWorkQueue(arena, workerThreadQueue, 
-                  DarkEngine_2d_FillBackground, (void*)&renderGroup);
+                  DarkEngine_2d_FillBackground, (void*)renderGroup);
 }

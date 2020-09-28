@@ -5,3 +5,13 @@
 *.lib
 *.exp
 *.lib
+.vs/
+*.vcxproj
+*.log
+*.sln
+ADarkAdventure.tlog/
+Debug/
+x64/
+unity_GM1GR2KV8XQGFQ6E.cpp
+*.filters
+*.user

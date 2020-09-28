@@ -29,6 +29,9 @@ struct temp_memory
     u32 sizeLeft;
 };
 
+// NOTE(winston): should we deal with memory alignment?
+internal b32 IsPowerOfTwo(uintptr_t test);
+
 internal memory_arena new_arena(void* memory, u32 size);
 
 internal void* ArenaAlloc(memory_arena* arena, u32 sizeToAlloc);

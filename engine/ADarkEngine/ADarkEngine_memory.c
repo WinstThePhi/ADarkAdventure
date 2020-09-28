@@ -3,6 +3,12 @@
 
 #include "ADarkEngine/ADarkEngine_memory.h"
 
+internal b32 
+IsPowerOfTwo(uintptr_t test)
+{
+    return (test & (test - 1)) == 0;
+}
+
 internal memory_arena
 new_arena(void* memory, u32 size)
 {

@@ -1,4 +1,4 @@
-#include <time.h>
+#include <stdlib.h>
 
 #include "ADarkEngine/ADarkEngine_WorkerThreadInterface.h"
 
@@ -6,7 +6,6 @@ internal u32
 ProcessWorkQueue(void* temp)
 {
     worker_thread_queue* queue = (worker_thread_queue*)temp;
-    
     f32 lastTime = (queue->osCall).GetTime_MS();
     
     loop
@@ -15,11 +14,16 @@ ProcessWorkQueue(void* temp)
             member != queue->tail;
             member = member->next)
         {
-            if(member->function != 0)
+            if(member->function)
             {
                 (*member->function)(member->parameter);
+                
+                if(member->parameter)
+                    free(member->parameter);
+                
                 member->function = 0;
                 member->parameter = 0;
+                
                 continue;
             }
             else
@@ -28,7 +32,7 @@ ProcessWorkQueue(void* temp)
             }
         }
         
-        if(queue->breakCommand)
+        if(queue->breakCommand && (queue->head->next == 0))
         {
             queue->isDone = 1;
             return 0;

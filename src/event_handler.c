@@ -55,6 +55,9 @@ ProcessOSMessages(game_state* gameState)
                     {
                         gameState->keyData[KEY_DOWN].isDown = 1;
                     } break;
+                    default:
+                    {
+                    } break;
                 }
             } break;
             case KEY_RELEASE:
@@ -96,6 +99,9 @@ ProcessOSMessages(game_state* gameState)
                     case KEY_DOWN:
                     {
                         gameState->keyData[KEY_DOWN].isDown = 0;
+                    } break;
+                    default:
+                    {
                     } break;
                 }
             } break;
