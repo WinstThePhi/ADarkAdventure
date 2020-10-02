@@ -2,7 +2,8 @@
 
 #include "ADarkEngine/core/ADarkEngine_FileIO.h"
 
-// NOTE(winston): Does not count null-terminate byte
+// NOTE(winston): Does not count null-terminate byte, I think
+// TODO(winston): Maybe check to see if the above is true.
 internal u32
 DE_GetFileSize(char* filename)
 {
