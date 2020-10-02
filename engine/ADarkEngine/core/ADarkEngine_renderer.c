@@ -1,14 +1,13 @@
-// TODO(winston): change to a custom stack allocator
 #include <stdlib.h>
 #include <math.h>
 
-#include "ADarkEngine/ADarkEngine_renderer.h"
+#include "ADarkEngine/core/ADarkEngine_renderer.h"
 
 #define BYTES_PER_PIXEL 4
 
 // NOTE(winston): software rendering
 inline void
-DarkEngine_DrawPixel(void* temp)
+DE_DrawPixel(void* temp)
 {
     pixel_render_group* renderGroup = (pixel_render_group*)temp;
     
@@ -18,7 +17,7 @@ DarkEngine_DrawPixel(void* temp)
 }
 
 internal void*
-DarkEngine_2d_FillBackground(void* temp)
+DE_2d_FillBackground(void* temp)
 {
     background_render_group* renderGroup = (background_render_group*)temp;
     
@@ -55,11 +54,50 @@ DarkEngine_2d_FillBackground(void* temp)
     return 0;
 }
 
+internal void*
+DE_2d_DrawRectangle(void* temp)
+{
+    rect_render_group* renderGroup = (rect_render_group*)temp;
+    
+    u16 xMin = renderGroup->x;
+    u16 yMin = renderGroup->y;
+    
+    u16 xMax = renderGroup->x + renderGroup->width;
+    u16 yMax = renderGroup->y + renderGroup->height;
+    
+    if(xMin < 0)
+        xMin = 0;
+    if(yMin < 0)
+        yMin = 0;
+    if(xMax > renderGroup->backBuffer->width)
+        xMax = renderGroup->backBuffer->width;
+    if(yMax > renderGroup->backBuffer->height)
+        yMax = renderGroup->backBuffer->height;
+    
+    u8* row = 
+        (u8*)((u8*)renderGroup->backBuffer->memory + (yMin * renderGroup->backBuffer->pitch));
+    
+    for(u16 yCount = yMin; yCount < yMax; ++yCount)
+    {
+        u32* pixel = (u32*)(row + (xMin * BYTES_PER_PIXEL));
+        
+        for(u16 xCount = xMin; xCount < xMax; ++xCount)
+        {
+            *pixel++ = renderGroup->color.r << 16 | renderGroup->color.g << 8 | renderGroup->color.b;
+        }
+        
+        row += renderGroup->backBuffer->pitch;
+    }
+    
+    return 0;
+}
+
+
 internal void
-DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
-                            u16 x, u16 y,
-                            u16 width, u16 height,
-                            v3 color)
+DE_2d_DrawRectangleOutline(back_buffer* backBuffer,
+                           u16 x, u16 y,
+                           u16 width, u16 height,
+                           v3 color)
 {
     u16 xMin = x;
     u16 yMin = y;
@@ -91,51 +129,17 @@ DarkEngine_2d_DrawRectangle(back_buffer* backBuffer,
     }
 }
 
-
-internal void
-DarkEngine_2d_DrawRectangleOutline(back_buffer* backBuffer,
-                                   u16 x, u16 y,
-                                   u16 width, u16 height,
-                                   v3 color)
-{
-    u16 xMin = x;
-    u16 yMin = y;
-    
-    u16 xMax = x + width;
-    u16 yMax = y + height;
-    
-    if(xMin < 0)
-        xMin = 0;
-    if(yMin < 0)
-        yMin = 0;
-    if(xMax > backBuffer->width)
-        xMax = backBuffer->width;
-    if(yMax > backBuffer->height)
-        yMax = backBuffer->height;
-    
-    u8* row = (u8*)((u8*)backBuffer->memory + (yMin * backBuffer->pitch));
-    
-    for(u16 yCount = yMin; yCount < yMax; ++yCount)
-    {
-        u32* pixel = (u32*)(row + (xMin * BYTES_PER_PIXEL));
-        
-        for(u16 xCount = xMin; xCount < xMax; ++xCount)
-        {
-            *pixel++ = color.r << 16 | color.g << 8 | color.b;
-        }
-        
-        row += backBuffer->pitch;
-    }
-}
-
+// TODO(winston): fix this to use new file read function
+#if 0
 // TODO(winston): pretty broken here
+// NOTE(winston): Could be a read error
 internal back_buffer
-DarkEngine_LoadBMP(memory_arena* arena, 
-                   char* filename)
+DE_LoadBMP(memory_arena* arena, 
+           char* filename)
 {
     back_buffer result = {0};
     
-    char* readResult = DarkEngine_ReadFile(arena, filename);
+    char* readResult = DE_ReadFile(arena, filename);
     
     if(readResult)
     {
@@ -161,9 +165,10 @@ DarkEngine_LoadBMP(memory_arena* arena,
     
     return result;
 }
+#endif
 
 internal void
-DarkEngine_PrintBackBuffer(back_buffer* backBuffer)
+DE_PrintBackBuffer(back_buffer* backBuffer)
 {
     if(backBuffer)
     {
@@ -177,8 +182,8 @@ DarkEngine_PrintBackBuffer(back_buffer* backBuffer)
 
 // TODO(winston): there is a grid-like pattern in the picture that is undesirable
 internal void 
-DarkEngine_2d_DrawBMP(back_buffer* dest, 
-                      back_buffer* src)
+DE_2d_DrawBMP(back_buffer* dest, 
+              back_buffer* src)
 {
     Assert(dest);
     Assert(src);
@@ -231,22 +236,45 @@ RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
 }
 #endif
 
-// NOTE(winston): renderer queueing interface
+//~ NOTE(winston): renderer queueing interface (pass in parameter storage arena)
 internal void 
-DarkEngine_Queue2d_FillBackgroundSolid(memory_arena* arena,
-                                       worker_thread_queue* workerThreadQueue,
-                                       back_buffer* backBuffer,
-                                       v3 color)
+DE2d_PushSolidBackground(memory_arena* globalArena, 
+                         worker_thread_queue* workerThreadQueue,  
+                         back_buffer* backBuffer, 
+                         v3 color)
 {
-    // TODO(winston): change to use a custom stack allocator 
-    //background_render_group* renderGroup = 
-    //ArenaAlloc(arena, sizeof(background_render_group));
-    
-    background_render_group* renderGroup = malloc(sizeof(background_render_group));
+    // TODO(winston): maybe change to use a custom stack allocator 
+    background_render_group* renderGroup = 
+        WT_PushStruct(&workerThreadQueue->parameterStorage, 
+                      background_render_group);
     
     renderGroup->backBuffer = backBuffer;
     renderGroup->color = color;
     
-    PushWorkQueue(arena, workerThreadQueue, 
-                  DarkEngine_2d_FillBackground, (void*)renderGroup);
+    PushWorkQueue(globalArena, workerThreadQueue, 
+                  DE_2d_FillBackground, (void*)renderGroup);
+}
+
+internal void 
+DE2d_PushRectangle(memory_arena* globalArena, 
+                   worker_thread_queue* workerThreadQueue, 
+                   back_buffer* backBuffer, 
+                   u16 x, u16 y, 
+                   u16 width, u16 height, 
+                   v3 color)
+{
+    // TODO(winston): maybe change to use a custom stack allocator 
+    
+    rect_render_group* renderGroup = WT_PushStruct(&workerThreadQueue->parameterStorage, 
+                                                   rect_render_group);
+    
+    renderGroup->backBuffer = backBuffer;
+    renderGroup->x = x;
+    renderGroup->y = y;
+    renderGroup->width = width;
+    renderGroup->height = height;
+    renderGroup->color = color;
+    
+    PushWorkQueue(globalArena, workerThreadQueue, 
+                  DE_2d_DrawRectangle, (void*)renderGroup);
 }

@@ -34,4 +34,12 @@ typedef struct game_code
     
 } game_code;
 
+typedef struct window_update_group
+{
+    HDC hdc;
+    win32_back_buffer* backBuffer;
+    u16 windowWidth;
+    u16 windowHeight;
+} window_update_group;
+
 #endif

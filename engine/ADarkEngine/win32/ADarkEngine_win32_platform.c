@@ -1,3 +1,4 @@
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
 #include <assert.h>
@@ -5,14 +6,7 @@
 
 #define ERROR_LOG_PATH "../data/platform_error.txt"
 
-#include "ADarkEngine/ADarkEngine_layer.h"
-
-#include "ADarkEngine/ADarkEngine_util.c"
-#include "ADarkEngine/ADarkEngine_memory.c"
-#include "ADarkEngine/ADarkEngine_FileIO.c"
-#include "ADarkEngine/ADarkEngine_WorkerThreadInterface.c"
-#include "ADarkEngine/ADarkEngine_platform_interface.c"
-#include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
+#include "ADarkEngine/ADarkEngine_platform.h"
 
 #ifndef WIDTH
 #define WIDTH 1280
@@ -29,6 +23,8 @@
 global game_state globalGameState;
 global win32_back_buffer globalWin32BackBuffer;
 global WINDOWPLACEMENT g_wpPrev = {0};
+global memory_arena arena = {0};
+global worker_thread_queue workerThreadQueue = {0};
 
 internal void 
 ToggleFullscreen(HWND window)
@@ -88,7 +84,7 @@ Win32_GetFileLastModifiedTime(char* filename)
 }
 
 internal game_code
-Win32_LoadGameCode(memory_arena* arena, 
+Win32_LoadGameCode(memory_arena* localArena, 
                    back_buffer* backBuffer, 
                    char* dllName,
                    worker_thread_queue* queue)
@@ -130,7 +126,7 @@ Win32_LoadGameCode(memory_arena* arena,
     
     gameCodeLoad.Game_Start(&globalGameState,
                             backBuffer,
-                            arena,
+                            localArena,
                             queue);
     
     gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
@@ -140,13 +136,13 @@ Win32_LoadGameCode(memory_arena* arena,
 
 internal void
 Win32_UnloadGameCode(game_code* gameCode,
-                     memory_arena* arena,
+                     memory_arena* localArena,
                      back_buffer* backBuffer,
                      worker_thread_queue* queue)
 {
     gameCode->Game_End(&globalGameState,
                        backBuffer,
-                       arena,
+                       localArena,
                        queue);
     
     FreeLibrary(gameCode->gameCode);
@@ -172,7 +168,7 @@ Win32_GetWindowDimensions(HWND window)
 }
 
 internal win32_back_buffer
-new_back_buffer(memory_arena* arena,
+new_back_buffer(memory_arena* localArena,
                 u16 width, 
                 u16 height)
 {
@@ -189,43 +185,29 @@ new_back_buffer(memory_arena* arena,
     backBuffer.bitmapInfo.bmiHeader.biCompression = BI_RGB;
     
     u32 sizeToAlloc = width * height * BYTES_PER_PIXEL;
-    backBuffer.memory = ArenaAlloc(arena, sizeToAlloc);
+    backBuffer.memory = ArenaAlloc(localArena, sizeToAlloc);
     backBuffer.pitch = width * BYTES_PER_PIXEL;
     
     return backBuffer;
 }
 
-internal void
-Win32_UpdateWindow(HDC hdc,
-                   win32_back_buffer* backBuffer,
-                   u16 windowWidth,
-                   u16 windowHeight)
+internal void*
+Win32_UpdateWindow(void* temp)
 {
-#ifdef STRETCH
-    StretchDIBits(hdc,
+    window_update_group* updateGroup = (window_update_group*)temp;
+    
+    StretchDIBits(updateGroup->hdc,
                   0, 0,
-                  windowWidth,
-                  windowHeight,
+                  updateGroup->windowWidth,
+                  updateGroup->windowHeight,
                   0, 0,
-                  backBuffer->width,
-                  backBuffer->height,
-                  backBuffer->memory,
-                  &backBuffer->bitmapInfo,
+                  updateGroup->backBuffer->width,
+                  updateGroup->backBuffer->height,
+                  updateGroup->backBuffer->memory,
+                  &updateGroup->backBuffer->bitmapInfo,
                   DIB_RGB_COLORS,
                   SRCCOPY);
-#else
-    StretchDIBits(hdc,
-                  0, 0,
-                  backBuffer->width,
-                  backBuffer->height,
-                  0, 0,
-                  backBuffer->width,
-                  backBuffer->height,
-                  backBuffer->memory,
-                  &backBuffer->bitmapInfo,
-                  DIB_RGB_COLORS,
-                  SRCCOPY);
-#endif
+    return 0;
 }
 
 internal LRESULT 
@@ -271,10 +253,17 @@ Win32_DefaultWindowCallback(HWND window,
             HDC paintDC = BeginPaint(window,
                                      &paintStruct);
             
-            Win32_UpdateWindow(paintDC,
-                               &globalWin32BackBuffer,
-                               dimension.width,
-                               dimension.height);
+            window_update_group* updateGroup = (window_update_group*)malloc(sizeof(window_update_group));
+            
+            updateGroup->hdc = paintDC;
+            updateGroup->backBuffer = &globalWin32BackBuffer;
+            updateGroup->windowWidth = dimension.width;
+            updateGroup->windowHeight = dimension.height;
+            
+            PushWorkQueue(&arena, 
+                          &workerThreadQueue,
+                          Win32_UpdateWindow,
+                          updateGroup);
             
             EndPaint(window,
                      &paintStruct);
@@ -482,6 +471,14 @@ Win32_DefaultWindowCallback(HWND window,
                                    KEY_RELEASE,
                                    keyCode);
                 }
+                
+                // NOTE(winston): maybe have an #ifndef F4_CLOSES_WINDOW here?
+                b32 altKeyWasDown = ((lParam) & (1 << 29));
+                if(altKeyWasDown && (VKcode == VK_F4))
+                {
+                    PushOSEvent(&globalGameState.eventList, 
+                                WINDOW_CLOSE);
+                }
             }
         } break;
         default:
@@ -544,6 +541,8 @@ GenerateOSCalls()
     return result;
 }
 
+
+//~ main function
 int
 WinMain(HINSTANCE hInstance, 
         HINSTANCE prevInstance,
@@ -559,19 +558,19 @@ WinMain(HINSTANCE hInstance,
                                 MEM_COMMIT,
                                 PAGE_READWRITE);
     
-    DarkEngine_ClearFile(ERROR_LOG_PATH);
+    DE_ClearFile(ERROR_LOG_PATH);
     
     if(!memory)
     {
-        DarkEngine_LogError("Failed allocate memory.");
+        DE_LogError("Failed allocate memory.");
         return -1;
     }
     
-    memory_arena arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
+    arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
     
     if(!arena.size)
     {
-        DarkEngine_LogError("Failed to create memory arena.");
+        DE_LogError("Failed to create memory arena.");
         return -1;
     }
     
@@ -615,7 +614,7 @@ WinMain(HINSTANCE hInstance,
             
             OS_call osCall = GenerateOSCalls();
             
-            worker_thread_queue workerThreadQueue = 
+            workerThreadQueue = 
                 new_worker_thread_queue(&arena);
             
             workerThreadQueue.osCall = osCall;
@@ -652,13 +651,12 @@ WinMain(HINSTANCE hInstance,
                                                     &workerThreadQueue);
             
             gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
+            f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
             
             //Win32_InitOpenGL(window);
             
             while(globalGameState.isRunning)
             {
-                f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
-                
                 FILETIME currentWriteTime = Win32_GetFileLastModifiedTime(dllName);
                 
                 if(CompareFileTime(&gameCode.lastWriteTime,
@@ -683,12 +681,17 @@ WinMain(HINSTANCE hInstance,
                 
                 window_dimensions dimension = Win32_GetWindowDimensions(window);
                 
-#if 1
-                Win32_UpdateWindow(hdc,
-                                   &globalWin32BackBuffer,
-                                   dimension.width,
-                                   dimension.height);
-#endif 
+                window_update_group* updateGroup = (window_update_group*)malloc(sizeof(window_update_group));
+                
+                updateGroup->hdc = hdc;
+                updateGroup->backBuffer = &globalWin32BackBuffer;
+                updateGroup->windowWidth = dimension.width;
+                updateGroup->windowHeight = dimension.height;
+                
+                PushWorkQueue(&arena, 
+                              &workerThreadQueue,
+                              Win32_UpdateWindow,
+                              updateGroup);
                 
                 f32 currentTime = GetTime_MS();
                 f32 timeElapsed = currentTime - lastTime;
@@ -700,10 +703,10 @@ WinMain(HINSTANCE hInstance,
                 }
 #endif
                 
-#if 0
+#if 1
                 char title[64];
                 
-                snprintf(title, 64, "A Dark Adventure - %.02f ms", timeElapsed);
+                _snprintf_s(title, 64, 64, "A Dark Adventure - %.02f ms", timeElapsed);
                 
                 SetWindowTextA(window,
                                title);
@@ -711,26 +714,27 @@ WinMain(HINSTANCE hInstance,
                 lastTime = currentTime;
             }
             
+            DestroyWindow(window);
+            
+            workerThreadQueue.breakCommand = 1;
+            WaitForSingleObject(workerThread, INFINITE);
+            
+            
             Win32_UnloadGameCode(&gameCode,
                                  &arena,
                                  &backBuffer,
                                  &workerThreadQueue);
             
-            workerThreadQueue.breakCommand = 1;
-            
             ReleaseDC(window, hdc);
-            DestroyWindow(window);
-            
-            WaitForSingleObject(workerThread, INFINITE);
         }
         else
         {
-            DarkEngine_LogError("Failed to create window.");
+            DE_LogError("Failed to create window.");
         }
     }
     else
     {
-        DarkEngine_LogError("Failed to register window class.");
+        DE_LogError("Failed to register window class.");
     }
     
     VirtualFree(arena.memory, 0, MEM_RELEASE);

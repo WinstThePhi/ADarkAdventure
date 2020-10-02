@@ -1,7 +1,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "ADarkEngine/ADarkEngine_memory.h"
+#include "ADarkEngine/core/ADarkEngine_memory.h"
 
 internal b32 
 IsPowerOfTwo(uintptr_t test)
@@ -28,16 +28,18 @@ ArenaAlloc(memory_arena* arena, u32 sizeToAlloc)
 {
     void* result = 0;
     
-    Assert(sizeToAlloc <= arena->sizeLeft && "No more space left in arena!");
-    
-    result = (void*)((char*)arena->memory + arena->offset);
-    
-    Assert(result);
-    
-    arena->offset += sizeToAlloc;
-    arena->sizeLeft -= sizeToAlloc;
-    
-    MemorySet(result, 0, sizeToAlloc);
+    if(arena->sizeLeft >= sizeToAlloc)
+    {
+        result = (void*)((char*)arena->memory + arena->offset);
+        
+        arena->offset += sizeToAlloc;
+        arena->sizeLeft -= sizeToAlloc;
+        //MemorySet(result, 0, sizeToAlloc);
+        
+        u32 align = arena->offset % 16;
+        arena->offset += align;
+        arena->sizeLeft -= align;
+    }
     
     return result;
 }
@@ -91,4 +93,25 @@ internal void* TempAlloc(temp_memory* tempArena,
     MemorySet(result, 0, sizeToAlloc);
     
     return result;
+}
+
+internal memory_arena 
+mini_arena_from_arena(memory_arena* parentArena, 
+                      u32 sizeOfNewArena)
+{
+    memory_arena result = {0};
+    
+    result.memory = ArenaAlloc(parentArena, sizeOfNewArena);
+    result.size = sizeOfNewArena;
+    result.sizeLeft = result.size;
+    
+    return result;
+}
+
+internal void
+ClearArenaToZero(memory_arena* arena)
+{
+    MemorySet(arena->memory, 0, arena->size);
+    arena->offset = 0;
+    arena->sizeLeft = arena->size;
 }

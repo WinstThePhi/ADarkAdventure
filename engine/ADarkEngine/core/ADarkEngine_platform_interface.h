@@ -7,7 +7,7 @@ typedef enum key_code
 {
 #define Key(name) KEY_##name,
     KEY_NULL,
-#include "key_list.inc"
+#include "../key_list.inc"
 #undef Key
     KEY_MAX
 } key_code;

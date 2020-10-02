@@ -1,4 +1,4 @@
-#include "ADarkEngine/ADarkEngine_util.h"
+#include "ADarkEngine/core/ADarkEngine_util.h"
 
 #if TESTING
 b32 isPowerOfTwo(u32 pointer)

@@ -87,7 +87,7 @@ int main(i32 argCount, char** args)
         }
         
         
-        char* fileContents = DarkEngine_ReadFile(&arena, args[i]);
+        char* fileContents = DE_ReadFile(&arena, args[i]);
         
         char path[100] = "../engine/ADarkEngine/generated/";
         
