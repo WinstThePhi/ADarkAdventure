@@ -19,7 +19,7 @@ REM -fdiagnostics-absolute-paths -O2
 set platformLinkSettings=/link user32.lib gdi32.lib opengl32.lib /incremental:no
 
 set exports=/EXPORT:Game_UpdateAndRender /EXPORT:Game_Start /EXPORT:Game_End
-set gameLinkSettings=/link /DLL %exports% /out:%game%
+set gameLinkSettings=/link /DLL %exports% /out:%game% /incremental:no
 
 set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996 
 REM -Wno-unused-function -Wno-unused-variable
@@ -29,7 +29,7 @@ if %compiler%==clang-cl (
 	set defaultCompilerFlags=%defaultCompilerFlags% -fdiagnostics-absolute-paths -O2
 )
 
-set defines=/DFPS_CAP /DSTRETCH /DHIDE_CURSOR /DQUEUE_TEST
+set defines=/DFPS_CAP /DSTRETCH /DHIDE_CURSOR /DQUEUE_TEST /DCOMPILER_MSVC
  
 set platformCode=..\engine\ADarkEngine\win32\ADarkEngine_win32_platform.c
 set gameCode=..\src\game.c
@@ -67,7 +67,7 @@ if NOT "%1"=="reload" (
 start /b /wait %compiler% %defines% %defaultCompilerFlags% %warnings% %gameCode% %gameLinkSettings%
 
 REM delete unnecessary files
-del /q /f /s *.obj *.lib *.ilk *.exp
+del /q /f *.obj *.lib *.ilk *.exp
 
 popd
 

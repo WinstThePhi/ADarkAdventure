@@ -81,7 +81,7 @@ internal void* TempAlloc(temp_memory* tempArena,
 {
     void* result = 0;
     
-    Assert(sizeToAlloc <= tempArena->sizeLeft && "No more space left in tempArena!");
+    Assert((sizeToAlloc <= tempArena->sizeLeft) && "No more space left in tempArena!");
     
     result = (void*)((char*)tempArena->memory + tempArena->offset);
     

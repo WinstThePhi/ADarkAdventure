@@ -22,8 +22,8 @@ DE_GetFileSize(char* filename)
 }
 
 internal char* 
-DE_ReadFile(memory_parameter memory, 
-            char* filename)
+DE_ReadFileByLine(memory_parameter memory, 
+                  char* filename)
 {
     FILE* file = fopen(filename, "r");
     if(!file)
@@ -57,6 +57,60 @@ DE_ReadFile(memory_parameter memory,
         }
     }
     return data;
+}
+
+internal char* 
+DE_ReadEntireFile(memory_parameter memory, 
+                  char* filename)
+{
+    FILE* file = fopen(filename, "r");
+    if(!file)
+    {
+        DE_LogError("File to read not found.");
+        return 0;
+    }
+    
+    u32 fileSize = DE_GetFileSize(filename);
+    char* data = 0;
+    
+    switch(memory.type)
+    {
+        case MEMORY_ARENA:
+        {
+            data = (char*)ArenaAlloc(memory.arena, fileSize + 1);
+        } break;
+        case TEMP_MEMORY_ARENA:
+        {
+            data = (char*)TempAlloc(memory.tempMemory, fileSize + 1);
+        } break;
+    }
+    
+    if(data)
+    {
+        fread(data, 1, fileSize + 1, file);
+    }
+    
+    return data;
+}
+
+internal char* 
+DE_ReadFile(memory_parameter memory, 
+            char* filename, 
+            read_type type)
+{
+    switch(type)
+    {
+        case ENTIRE_FILE:
+        {
+            return DE_ReadEntireFile(memory, filename);
+        } break;
+        case BY_LINE:
+        {
+            return DE_ReadFileByLine(memory, filename);
+        } break;
+    }
+    
+    return 0;
 }
 
 internal void 

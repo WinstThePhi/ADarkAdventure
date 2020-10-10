@@ -2,8 +2,8 @@
 #define ERROR_LOG_PATH "../data/game_error.txt"
 
 #include "ADarkEngine/ADarkEngine.h"
-
 #include "game.h"
+
 #include "event_handler.c"
 
 //~ NOTE(winston): runs when the game starts
@@ -67,14 +67,12 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
                              queue,
                              backBuffer,
                              (v3){.r = 0, .g = 188, .b = 255});
-    
     DE2d_PushRectangle(arena,
                        queue,
                        backBuffer,
                        0, 600,
                        backBuffer->width, backBuffer->height - 600,
                        (v3){.r = 0x9B, .g = 0x76, .b = 0x53});
-    
     DE2d_PushRectangle(arena,
                        queue,
                        backBuffer,

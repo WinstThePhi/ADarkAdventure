@@ -1,58 +1,54 @@
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "ADarkEngine/core/ADarkEngine_WorkerThreadInterface.h"
 
-// TODO(winston) [FIXED]: fix bug (stale member pointer points to an area not allowed to access)
-// NOTE(winston): problem above came from worker thread calling function while passing an parameter that is not filled out 
-// NOTE(winston): for function to be called, parameter cannot be a nullptr
-// TODO(winston): maybe fix for above?
-// NOTE(winston): maybe capping is a bad idea because does not sync with main thread
+internal void
+BeginTicketMutex(OS_call* call, ticket_mutex* ticketMutex)
+{
+    u64 ticket = AtomicAddU64(&ticketMutex->ticketServed, 1);
+    
+    while(ticket != ticketMutex->ticketServing)
+    {
+    }
+}
+
+internal void
+EndTicketMutex(ticket_mutex* ticketMutex)
+{
+    AtomicAddU64(&ticketMutex->ticketServing, 1);
+}
+
 // TODO(winston): sync loop with main thread
 internal u32
-ProcessWorkQueue(void* temp)
+WT_ProcessWorkQueue(void* temp)
 {
     worker_thread_queue* queue = (worker_thread_queue*)temp;
-    f32 lastTime = (queue->osCall).GetTime_MS();
     
-    while(!queue->breakCommand)
+    while(!queue->isRunning)
     {
         for(worker_thread_queue_member* member = (queue->head)->next;
             member != queue->tail;
             member = member->next)
         {
-            // NOTE(winston): this point here forces parameter to not be nullptr to be called
-            if((member->function != 0) && (member->parameter))
-            {
+            BeginTicketMutex(&queue->osCall, &queue->workerThreadQueueMutex);
+            
+            if(member->function)
                 (*member->function)(member->parameter);
-                
-                member->function = 0;
-                member->parameter = 0;
-                
-                --queue->numberOfJobsInQueue;
-                continue;
-            }
-            else
-            {
-                break;
-            }
+            
+            member->function = 0;
+            member->parameter = 0;
+            
+            --queue->numberOfJobsInQueue;
+            
+            EndTicketMutex(&queue->workerThreadQueueMutex);
         }
-        
-#if 0
-        f32 currentTime = (queue->osCall).GetTime_MS();
-        f32 timeElapsed = currentTime - lastTime;
-        if((queue->numberOfJobsInQueue) == 0 && (timeElapsed < 16.667f))
-        {
-            (queue->osCall).ThreadSleep((i32)16.667f - (i32)timeElapsed);
-        }
-        lastTime = currentTime;
-#endif
-        //printf("%d", queue->parameterStorage.offset);
     }
     
     char buffer[64] = {0};
     
     // TODO(winston): check to see if _snprintf_s is available on POSIX systems
     _snprintf_s(buffer, 64, 64, "Queue Nodes Created: %d", queue->queueNodesCreated);
+    
     DE_WriteFile("../data/worker_thread.txt", buffer);
     
     return 0;
@@ -71,55 +67,89 @@ new_worker_thread_queue(memory_arena* arena)
     (result.head)->next = result.tail;
     (result.tail)->back = result.head;
     
+    worker_thread_queue_member* member = WT_PushMember(arena, &result);
+    
+    result.at = member;
+    
     return result;
 }
 
-internal void 
-PushWorkQueue(memory_arena* arena, 
-              worker_thread_queue* workerThreadQueue,
-              void* (*function)(void*), void* parameter)
+internal worker_thread_queue_member* 
+WT_GetOpenSlot(worker_thread_queue* queue)
 {
-    ++workerThreadQueue->numberOfJobsInQueue;
-    
-    worker_thread_queue_member* openSlot = 0;
-    
-    for(worker_thread_queue_member* i = (workerThreadQueue->head)->next;
-        i != workerThreadQueue->tail;
+    for(worker_thread_queue_member* i = (queue->head)->next;
+        i != queue->tail;
         i = i->next)
     {
         if(i->function == 0)
         {
-            openSlot = i;
-            break;
+            return i;
         }
     }
     
-    if(openSlot)
+    return 0;
+}
+internal worker_thread_queue_member*
+WT_PushMember(memory_arena* arena, 
+              worker_thread_queue* queue)
+{
+    ++queue->queueNodesCreated;
+    
+    worker_thread_queue_member* newMember = Arena_PushStruct(arena, worker_thread_queue_member);
+    
+    newMember->back = queue->tail->back;
+    newMember->next = queue->tail;
+    
+    ((queue->tail)->back)->next = newMember;
+    (queue->tail)->back = newMember;
+    
+    return newMember;
+}
+
+#define FILL_IN_AT(queue, function, parameter) \
+queue->at->function = function; \
+queue->at->parameter = parameter;
+
+// TODO(winston): time for rework
+internal void 
+WT_PushQueue(memory_arena* arena, 
+             worker_thread_queue* workerThreadQueue,
+             void* (*function)(void*), void* parameter)
+{
+    ++workerThreadQueue->numberOfJobsInQueue;
+    
+    BeginTicketMutex(&workerThreadQueue->osCall, &workerThreadQueue->workerThreadQueueMutex);
+    
+    FILL_IN_AT(workerThreadQueue, function, parameter);
+    
+    if(workerThreadQueue->at->next == workerThreadQueue->tail)
     {
-        openSlot->function = function;
-        openSlot->parameter = parameter;
+        if(workerThreadQueue->head->next->function == 0)
+        {
+            workerThreadQueue->at = workerThreadQueue->head->next;
+        }
+        else
+        {
+            worker_thread_queue_member* newMember = WT_PushMember(arena, workerThreadQueue);
+            
+            workerThreadQueue->at = newMember;
+            
+            newMember->parameter = parameter;
+            newMember->function = function;
+        }
     }
     else
     {
-        ++workerThreadQueue->queueNodesCreated;
-        
-        worker_thread_queue_member* newMember = Arena_PushStruct(arena, worker_thread_queue_member);
-        
-        newMember->function = function;
-        newMember->parameter = parameter;
-        
-        newMember->back = workerThreadQueue->tail->back;
-        newMember->next = workerThreadQueue->tail;
-        
-        ((workerThreadQueue->tail)->back)->next = newMember;
-        (workerThreadQueue->tail)->back = newMember;
+        workerThreadQueue->at = workerThreadQueue->at->next;
     }
+    
+    EndTicketMutex(&workerThreadQueue->workerThreadQueueMutex);
 }
 
 // NOTE(winston): will break if queue is not handled quickly enough
 internal void* 
-WorkerThread_CustomArenaAlloc(memory_arena* arena, 
-                              u32 sizeToAlloc)
+WT_CustomArenaAlloc(memory_arena* arena, 
+                    u32 sizeToAlloc)
 {
     if(arena->sizeLeft < sizeToAlloc)
     {

@@ -1,12 +1,7 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <stdio.h>
-#include <assert.h>
-#include <GL/gl.h>
 
 #define ERROR_LOG_PATH "../data/platform_error.txt"
 
-#include "ADarkEngine/ADarkEngine_platform.h"
+#include "ADarkEngine/win32/ADarkEngine_platform.h"
 
 #ifndef WIDTH
 #define WIDTH 1280
@@ -25,6 +20,7 @@ global win32_back_buffer globalWin32BackBuffer;
 global WINDOWPLACEMENT g_wpPrev = {0};
 global memory_arena arena = {0};
 global worker_thread_queue workerThreadQueue = {0};
+global OS_call os = {0};
 
 internal void 
 ToggleFullscreen(HWND window)
@@ -253,17 +249,17 @@ Win32_DefaultWindowCallback(HWND window,
             HDC paintDC = BeginPaint(window,
                                      &paintStruct);
             
-            window_update_group* updateGroup = (window_update_group*)malloc(sizeof(window_update_group));
+            window_update_group* updateGroup = WT_PushStruct(&workerThreadQueue.parameterStorage, window_update_group);
             
             updateGroup->hdc = paintDC;
             updateGroup->backBuffer = &globalWin32BackBuffer;
             updateGroup->windowWidth = dimension.width;
             updateGroup->windowHeight = dimension.height;
             
-            PushWorkQueue(&arena, 
-                          &workerThreadQueue,
-                          Win32_UpdateWindow,
-                          updateGroup);
+            WT_PushQueue(&arena, 
+                         &workerThreadQueue,
+                         Win32_UpdateWindow,
+                         updateGroup);
             
             EndPaint(window,
                      &paintStruct);
@@ -510,7 +506,8 @@ GetTime_MS()
     QueryPerformanceCounter(&time);
     
     f64 MS_elapsed = 
-        ((f64)time.QuadPart / (f64)performanceFrequency.QuadPart) * 1000;
+        ((f64)time.QuadPart / (f64)performanceFrequency.QuadPart);
+    MS_elapsed *= 1000;
     
     return (f32)MS_elapsed;
 }
@@ -612,17 +609,17 @@ WinMain(HINSTANCE hInstance,
         {
             DWORD threadContext = 0;
             
-            OS_call osCall = GenerateOSCalls();
+            os = GenerateOSCalls();
             
             workerThreadQueue = 
                 new_worker_thread_queue(&arena);
             
-            workerThreadQueue.osCall = osCall;
+            workerThreadQueue.osCall = os;
             
 #define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
             HANDLE workerThread = CreateThread(0,
                                                0,
-                                               (WIN32_THREAD_FUNC_TEMPLATE)ProcessWorkQueue,
+                                               (WIN32_THREAD_FUNC_TEMPLATE)WT_ProcessWorkQueue,
                                                (void*)&workerThreadQueue,
                                                0,
                                                &threadContext);
@@ -641,6 +638,7 @@ WinMain(HINSTANCE hInstance,
             backBuffer.bytesPerPixel = 4;
             
             HDC hdc = GetDC(window);
+            
             char dllName[] = "game.dll";
             
             globalGameState.fpsCap = 60;
@@ -681,17 +679,17 @@ WinMain(HINSTANCE hInstance,
                 
                 window_dimensions dimension = Win32_GetWindowDimensions(window);
                 
-                window_update_group* updateGroup = (window_update_group*)malloc(sizeof(window_update_group));
+                window_update_group* updateGroup = WT_PushStruct(&workerThreadQueue.parameterStorage, window_update_group);
                 
                 updateGroup->hdc = hdc;
                 updateGroup->backBuffer = &globalWin32BackBuffer;
                 updateGroup->windowWidth = dimension.width;
                 updateGroup->windowHeight = dimension.height;
                 
-                PushWorkQueue(&arena, 
-                              &workerThreadQueue,
-                              Win32_UpdateWindow,
-                              updateGroup);
+                WT_PushQueue(&arena, 
+                             &workerThreadQueue,
+                             Win32_UpdateWindow,
+                             updateGroup);
                 
                 f32 currentTime = GetTime_MS();
                 f32 timeElapsed = currentTime - lastTime;
@@ -699,11 +697,19 @@ WinMain(HINSTANCE hInstance,
 #ifdef FPS_CAP
                 if(timeElapsed < msCap)
                 {
-                    Sleep((DWORD)(msCap - timeElapsed));
+                    u32 timeToSleep = (u32)(msCap - timeElapsed);
+                    
+                    // NOTE(winston): try to get worker thread to also sleep
+                    workerThreadQueue.timeToSleep = timeToSleep;
+                    workerThreadQueue.isSleeping = 1;
+                    workerThreadQueue.sleepStart = GetTime_MS();
+                    
+                    // NOTE(winston): main thread sleep turn
+                    Sleep((DWORD)(timeToSleep));
                 }
 #endif
                 
-#if 1
+#if 0
                 char title[64];
                 
                 _snprintf_s(title, 64, 64, "A Dark Adventure - %.02f ms", timeElapsed);
@@ -716,7 +722,7 @@ WinMain(HINSTANCE hInstance,
             
             DestroyWindow(window);
             
-            workerThreadQueue.breakCommand = 1;
+            workerThreadQueue.isRunning = 1;
             WaitForSingleObject(workerThread, INFINITE);
             
             

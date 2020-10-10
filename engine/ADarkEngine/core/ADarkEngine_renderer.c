@@ -17,7 +17,7 @@ DE_DrawPixel(void* temp)
 }
 
 internal void*
-DE_2d_FillBackground(void* temp)
+DE_2d_FillBackgroundSolid(void* temp)
 {
     background_render_group* renderGroup = (background_render_group*)temp;
     
@@ -27,17 +27,10 @@ DE_2d_FillBackground(void* temp)
     u16 xMax = renderGroup->backBuffer->width;
     u16 yMax = renderGroup->backBuffer->height;
     
-    if(xMin < 0)
-        xMin = 0;
-    if(yMin < 0)
-        yMin = 0;
-    if(xMax > renderGroup->backBuffer->width)
-        xMax = renderGroup->backBuffer->width;
-    if(yMax > renderGroup->backBuffer->height)
-        yMax = renderGroup->backBuffer->height;
+    u8* row = (u8*)renderGroup->backBuffer->memory;
+    u32 color = (renderGroup->color).r << 16 | (renderGroup->color).g << 8 | (renderGroup->color).b;
     
-    u8* row = 
-        (u8*)((u32*)renderGroup->backBuffer->memory + (yMin * renderGroup->backBuffer->pitch));
+    u32 size = renderGroup->backBuffer->width * renderGroup->backBuffer->height * renderGroup->backBuffer->bytesPerPixel;
     
     for(u16 yCount = yMin; yCount < yMax; ++yCount)
     {
@@ -45,7 +38,7 @@ DE_2d_FillBackground(void* temp)
         
         for(u16 xCount = xMin; xCount < xMax; ++xCount)
         {
-            *pixel++ = (renderGroup->color).r << 16 | (renderGroup->color).g << 8 | (renderGroup->color).b;
+            *pixel++ = color;
         }
         
         row += renderGroup->backBuffer->pitch;
@@ -185,8 +178,9 @@ internal void
 DE_2d_DrawBMP(back_buffer* dest, 
               back_buffer* src)
 {
-    Assert(dest);
-    Assert(src);
+    Assert(dest != 0);
+    Assert(src != 0);
+    
     if(src->bytesPerPixel == 3)
     {
         u32 size = src->bytesPerPixel * src->width * src->height;
@@ -251,8 +245,8 @@ DE2d_PushSolidBackground(memory_arena* globalArena,
     renderGroup->backBuffer = backBuffer;
     renderGroup->color = color;
     
-    PushWorkQueue(globalArena, workerThreadQueue, 
-                  DE_2d_FillBackground, (void*)renderGroup);
+    WT_PushQueue(globalArena, workerThreadQueue, 
+                 DE_2d_FillBackgroundSolid, (void*)renderGroup);
 }
 
 internal void 
@@ -275,6 +269,6 @@ DE2d_PushRectangle(memory_arena* globalArena,
     renderGroup->height = height;
     renderGroup->color = color;
     
-    PushWorkQueue(globalArena, workerThreadQueue, 
-                  DE_2d_DrawRectangle, (void*)renderGroup);
+    WT_PushQueue(globalArena, workerThreadQueue, 
+                 DE_2d_DrawRectangle, (void*)renderGroup);
 }
