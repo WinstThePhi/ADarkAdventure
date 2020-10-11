@@ -84,6 +84,20 @@ typedef struct rect_render_group
     v3 color;
 } rect_render_group;
 
+inline v3 
+v3_color(u8 r, u8 g, u8 b)
+{
+    v3 result = {.r = r, .g = g, .b = b};
+    return result;
+}
+
+inline v3
+v3_coords(u16 x, u16 y, u16 z)
+{
+    v3 result = {.x = x, .y = y, .z = z};
+    return result;
+}
+
 inline void DE_DrawPixel(void* temp);
 
 internal void* DE_2d_FillBackground(void* temp);

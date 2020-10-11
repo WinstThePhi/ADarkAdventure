@@ -18,7 +18,8 @@
 #include "ADarkEngine/core/ADarkEngine_WorkerThreadInterface.c"
 #include "ADarkEngine/core/ADarkEngine_platform_interface.c"
 #include "ADarkEngine/win32/ADarkEngine_win32_platform.h"
-
 #include "ADarkEngine/win32/ADarkEngine_win32_opengl.c"
+
+#include "ADarkEngine/event_handler.c"
 
 #endif

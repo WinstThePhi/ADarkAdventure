@@ -41,5 +41,5 @@ Key(LEFT)
 Key(RIGHT)
 Key(DOWN)
 
-Key(ESC)
+Key(ESCAPE)
 Key(SPACE)

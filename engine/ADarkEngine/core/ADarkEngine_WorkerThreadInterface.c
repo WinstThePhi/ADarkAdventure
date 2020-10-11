@@ -2,17 +2,16 @@
 
 #include "ADarkEngine/core/ADarkEngine_WorkerThreadInterface.h"
 
-internal void
+inline void
 BeginTicketMutex(OS_call* call, ticket_mutex* ticketMutex)
 {
     u64 ticket = AtomicAddU64(&ticketMutex->ticketServed, 1);
-    
     while(ticket != ticketMutex->ticketServing)
     {
     }
 }
 
-internal void
+inline void
 EndTicketMutex(ticket_mutex* ticketMutex)
 {
     AtomicAddU64(&ticketMutex->ticketServing, 1);
@@ -31,6 +30,8 @@ WT_ProcessWorkQueue(void* temp)
             member = member->next)
         {
             BeginTicketMutex(&queue->osCall, &queue->workerThreadQueueMutex);
+            
+            //while(member->function == 0);
             
             if(member->function)
                 (*member->function)(member->parameter);
@@ -89,6 +90,7 @@ WT_GetOpenSlot(worker_thread_queue* queue)
     
     return 0;
 }
+
 internal worker_thread_queue_member*
 WT_PushMember(memory_arena* arena, 
               worker_thread_queue* queue)
@@ -97,18 +99,18 @@ WT_PushMember(memory_arena* arena,
     
     worker_thread_queue_member* newMember = Arena_PushStruct(arena, worker_thread_queue_member);
     
-    newMember->back = queue->tail->back;
-    newMember->next = queue->tail;
-    
     ((queue->tail)->back)->next = newMember;
     (queue->tail)->back = newMember;
+    
+    newMember->back = queue->tail->back;
+    newMember->next = queue->tail;
     
     return newMember;
 }
 
 #define FILL_IN_AT(queue, function, parameter) \
 queue->at->function = function; \
-queue->at->parameter = parameter;
+queue->at->parameter = parameter
 
 // TODO(winston): time for rework
 internal void 
@@ -145,6 +147,7 @@ WT_PushQueue(memory_arena* arena,
     
     EndTicketMutex(&workerThreadQueue->workerThreadQueueMutex);
 }
+#undef FILL_IN_AT
 
 // NOTE(winston): will break if queue is not handled quickly enough
 internal void* 

@@ -4,8 +4,6 @@
 #include "ADarkEngine/ADarkEngine.h"
 #include "game.h"
 
-#include "event_handler.c"
-
 //~ NOTE(winston): runs when the game starts
 START_GAME(Game_Start)
 {
@@ -20,8 +18,6 @@ START_GAME(Game_Start)
 //~ NOTE(winston): runs every frame
 GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
 {
-    ProcessOSMessages(gameState);
-    
     local_persist f32 velY = 0;
 #define GRAVITY -0.163f
 #define SPEED 6
@@ -29,17 +25,14 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
     {
         gameState->y -= SPEED;
     }
-    
     if(gameState->keyData[KEY_A].isDown)
     {
         gameState->x -= SPEED;
     }
-    
     if(gameState->keyData[KEY_S].isDown)
     {
         gameState->y += SPEED;
     }
-    
     if(gameState->keyData[KEY_D].isDown)
     {
         gameState->x += SPEED;
@@ -66,19 +59,19 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
     DE2d_PushSolidBackground(arena,
                              queue,
                              backBuffer,
-                             (v3){.r = 0, .g = 188, .b = 255});
+                             v3_color(0, 188, 255));
     DE2d_PushRectangle(arena,
                        queue,
                        backBuffer,
                        0, 600,
                        backBuffer->width, backBuffer->height - 600,
-                       (v3){.r = 0x9B, .g = 0x76, .b = 0x53});
+                       v3_color(0x9B, 0x76, 0x53));
     DE2d_PushRectangle(arena,
                        queue,
                        backBuffer,
                        gameState->x, gameState->y,
                        100, 100,
-                       (v3){.r = 255, .g = 255, .b = 255});
+                       v3_color(255, 255, 255));
 }
 
 //~ NOTE(winston): Runs when unloaded or ended

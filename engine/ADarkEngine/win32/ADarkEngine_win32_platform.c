@@ -278,174 +278,16 @@ Win32_DefaultWindowCallback(HWND window,
                 
                 switch(VKcode)
                 {
-                    case 'Q':
-                    {
-                        keyCode = KEY_Q;
-                    } break;
-                    case 'W':
-                    {
-                        keyCode = KEY_W;
-                    } break;
-                    case 'E':
-                    {
-                        keyCode = KEY_E;
-                    } break;
-                    case 'R':
-                    {
-                        keyCode = KEY_R;
-                    } break;
-                    case 'T':
-                    {
-                        keyCode = KEY_T;
-                    } break;
-                    case 'Y':
-                    {
-                        keyCode = KEY_Y;
-                    } break;
-                    case 'U':
-                    {
-                        keyCode = KEY_U;
-                    } break;
-                    case 'I':
-                    {
-                        keyCode = KEY_I;
-                    } break;
-                    case 'O':
-                    {
-                        keyCode = KEY_O;
-                    } break;
-                    case 'P':
-                    {
-                        keyCode = KEY_P;
-                    } break;
-                    case 'A':
-                    {
-                        keyCode = KEY_A;
-                    } break;
-                    case 'S':
-                    {
-                        keyCode = KEY_S;
-                    } break;
-                    case 'D':
-                    {
-                        keyCode = KEY_D;
-                    } break;
-                    case 'F':
-                    {
-                        keyCode = KEY_F;
-                    } break;
-                    case 'G':
-                    {
-                        keyCode = KEY_G;
-                    } break;
-                    case 'H':
-                    {
-                        keyCode = KEY_H;
-                    } break;
-                    case 'J':
-                    {
-                        keyCode = KEY_J;
-                    } break;
-                    case 'K':
-                    {
-                        keyCode = KEY_K;
-                    } break;
-                    case 'L':
-                    {
-                        keyCode = KEY_L;
-                    } break;
-                    case 'Z':
-                    {
-                        keyCode = KEY_Z;
-                    } break;
-                    case 'X':
-                    {
-                        keyCode = KEY_X;
-                    } break;
-                    case 'C':
-                    {
-                        keyCode = KEY_C;
-                    } break;
-                    case 'V':
-                    {
-                        keyCode = KEY_V;
-                    } break;
-                    case 'B':
-                    {
-                        keyCode = KEY_B;
-                    } break;
-                    case 'N':
-                    {
-                        keyCode = KEY_N;
-                    } break;
-                    case 'M':
-                    {
-                        keyCode = KEY_M;
-                    } break;
-                    case '1':
-                    {
-                        keyCode = KEY_1;
-                    } break;
-                    case '2':
-                    {
-                        keyCode = KEY_2;
-                    } break;
-                    case '3':
-                    {
-                        keyCode = KEY_3;
-                    } break;
-                    case '4':
-                    {
-                        keyCode = KEY_4;
-                    } break;
-                    case '5':
-                    {
-                        keyCode = KEY_5;
-                    } break;
-                    case '6':
-                    {
-                        keyCode = KEY_6;
-                    } break;
-                    case '7':
-                    {
-                        keyCode = KEY_7;
-                    } break;
-                    case '8':
-                    {
-                        keyCode = KEY_8;
-                    } break;
-                    case '9':
-                    {
-                        keyCode = KEY_9;
-                    } break;
-                    case '0':
-                    {
-                        keyCode = KEY_0;
-                    } break;
-                    case VK_UP:
-                    {
-                        keyCode = KEY_UP;
-                    } break;
-                    case VK_LEFT:
-                    {
-                        keyCode = KEY_LEFT;
-                    } break;
-                    case VK_RIGHT:
-                    {
-                        keyCode = KEY_RIGHT;
-                    } break;
-                    case VK_DOWN:
-                    {
-                        keyCode = KEY_DOWN;
-                    } break;
-                    case VK_ESCAPE:
-                    {
-                        keyCode = KEY_ESC;
-                    } break;
-                    case VK_SPACE:
-                    {
-                        keyCode = KEY_SPACE;
-                    } break;
+                    
+#define Key(keyID) \
+case VK_##keyID: \
+{ \
+keyCode = KEY_##keyID; \
+} break;
+                    
+#include "ADarkEngine/key_list.inc"
+#undef Key
+                    
                     case VK_F11:
                     {
 #ifdef FULLSCREEN
@@ -538,13 +380,12 @@ GenerateOSCalls()
     return result;
 }
 
+//~ NOTE(winston): main function
 
-//~ main function
-int
-WinMain(HINSTANCE hInstance, 
-        HINSTANCE prevInstance,
-        LPSTR CMDLine, 
-        INT cmdShow)
+i32 WinMain(HINSTANCE hInstance, 
+            HINSTANCE prevInstance,
+            LPSTR CMDLine, 
+            INT cmdShow)
 {
     DisableBuffering(stdout);
     DisableBuffering(stderr);
@@ -671,6 +512,8 @@ WinMain(HINSTANCE hInstance,
                 }
                 
                 Win32_ProcessMessageQueue(window);
+                
+                ProcessOSMessages(&globalGameState);
                 
                 gameCode.Game_UpdateAndRender(&globalGameState,
                                               &backBuffer,
