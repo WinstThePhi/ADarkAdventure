@@ -116,14 +116,10 @@ internal void DE_2d_DrawBMP(back_buffer* dest,
                             back_buffer* src);
 
 internal void 
-DE2d_PushSolidBackground(memory_arena* globalArena,
-                         worker_thread_queue* workerThreadQueue,
-                         back_buffer* backBuffer,
+DE2d_PushSolidBackground(render_group* renderGroup,
                          v3 color);
 internal void
-DE2d_PushRectangle(memory_arena* globalArena, 
-                   worker_thread_queue* workerThreadQueue,
-                   back_buffer* backBuffer,
+DE2d_PushRectangle(render_group* renderGroup,
                    u16 x, u16 y,
                    u16 width, u16 height,
                    v3 color);

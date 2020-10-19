@@ -1,7 +1,7 @@
 #ifndef PLATFORM_INTERFACE_H
 #define PLATFORM_INTERFACE_H
 
-#define NUM_OF_OS_EVENT   2
+#define NUM_OF_OS_EVENT 3
 
 typedef enum key_code
 {
@@ -16,9 +16,14 @@ typedef enum OS_event_type
 {
     EVENT_NULL,
     WINDOW_CLOSE,
+    EVENT_KEY
+} OS_event_type;
+
+typedef enum key_state
+{
     KEY_PRESS,
     KEY_RELEASE
-} OS_event_type;
+} key_state;
 
 typedef struct OS_event OS_event;
 
@@ -26,10 +31,8 @@ struct OS_event
 {
     OS_event_type eventType;
     
-    union
-    {
-        key_code keyCode;
-    };
+    key_code keyCode;
+    key_state keyState;
 };
 
 typedef struct OS_event_list
@@ -61,9 +64,28 @@ typedef struct back_buffer
     u32 bytesPerPixel;
 } back_buffer;
 
+typedef struct render_group
+{
+    memory_arena* arena;
+    worker_thread_queue* workerThreadQueue;
+    back_buffer* backBuffer;
+} render_group;
+
+inline u16 
+GetBackBufferWidth(render_group* renderGroup)
+{
+    return renderGroup->backBuffer->width;
+}
+
+inline u16 
+GetBackBufferHeight(render_group* renderGroup)
+{
+    return renderGroup->backBuffer->height;
+}
+
 #include "ADarkEngine/generated/game_state.h"
 
-#define GAME_ARGS game_state* gameState, back_buffer* backBuffer, memory_arena* arena, worker_thread_queue* queue
+#define GAME_ARGS game_state* gameState, render_group* renderGroup, memory_arena* arena, worker_thread_queue* queue
 
 #define GAME_UPDATE_AND_RENDER(name) void name(GAME_ARGS)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
@@ -89,12 +111,20 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRenderStub)
 internal OS_event_list GenerateEventList(memory_arena* arena, u32 size);
 
 internal void PushOSEvent(OS_event_list* list,
-                          OS_event_type type);
+                          OS_event event);
 
-internal void PushOSKeyEvent(OS_event_list* list,
-                             OS_event_type type,
-                             key_code keyCode);
+internal OS_event OSEvent(OS_event_type type);
+
+internal OS_event KeyEvent(key_code keyCode,
+                           key_state keyState);
 
 internal void ClearEventList(OS_event_list* list);
+
+inline b32 
+IsKeyDown(game_state* gameState, key_code keyCode)
+{
+    return (keyCode < KEY_MAX && keyCode > KEY_NULL) ?
+        gameState->keyData[keyCode].isDown : 0;
+}
 
 #endif

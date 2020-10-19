@@ -232,43 +232,39 @@ RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
 
 //~ NOTE(winston): renderer queueing interface (pass in parameter storage arena)
 internal void 
-DE2d_PushSolidBackground(memory_arena* globalArena, 
-                         worker_thread_queue* workerThreadQueue,  
-                         back_buffer* backBuffer, 
+DE2d_PushSolidBackground(render_group* renderGroup, 
                          v3 color)
 {
     // TODO(winston): maybe change to use a custom stack allocator 
-    background_render_group* renderGroup = 
-        WT_PushStruct(&workerThreadQueue->parameterStorage, 
+    background_render_group* backgroundRenderGroup = 
+        WT_PushStruct(&renderGroup->workerThreadQueue->parameterStorage, 
                       background_render_group);
     
-    renderGroup->backBuffer = backBuffer;
-    renderGroup->color = color;
+    backgroundRenderGroup->backBuffer = renderGroup->backBuffer;
+    backgroundRenderGroup->color = color;
     
-    WT_PushQueue(globalArena, workerThreadQueue, 
-                 DE_2d_FillBackgroundSolid, (void*)renderGroup);
+    WT_PushQueue(renderGroup->arena, renderGroup->workerThreadQueue, 
+                 DE_2d_FillBackgroundSolid, (void*)backgroundRenderGroup);
 }
 
 internal void 
-DE2d_PushRectangle(memory_arena* globalArena, 
-                   worker_thread_queue* workerThreadQueue, 
-                   back_buffer* backBuffer, 
+DE2d_PushRectangle(render_group* renderGroup, 
                    u16 x, u16 y, 
                    u16 width, u16 height, 
                    v3 color)
 {
     // TODO(winston): maybe change to use a custom stack allocator 
     
-    rect_render_group* renderGroup = WT_PushStruct(&workerThreadQueue->parameterStorage, 
-                                                   rect_render_group);
+    rect_render_group* rectRenderGroup = WT_PushStruct(&renderGroup->workerThreadQueue->parameterStorage, 
+                                                       rect_render_group);
     
-    renderGroup->backBuffer = backBuffer;
-    renderGroup->x = x;
-    renderGroup->y = y;
-    renderGroup->width = width;
-    renderGroup->height = height;
-    renderGroup->color = color;
+    rectRenderGroup->backBuffer = renderGroup->backBuffer;
+    rectRenderGroup->x = x;
+    rectRenderGroup->y = y;
+    rectRenderGroup->width = width;
+    rectRenderGroup->height = height;
+    rectRenderGroup->color = color;
     
-    WT_PushQueue(globalArena, workerThreadQueue, 
-                 DE_2d_DrawRectangle, (void*)renderGroup);
+    WT_PushQueue(renderGroup->arena, renderGroup->workerThreadQueue, 
+                 DE_2d_DrawRectangle, (void*)rectRenderGroup);
 }

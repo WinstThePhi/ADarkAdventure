@@ -17,29 +17,32 @@ GenerateEventList(memory_arena* arena, u32 size)
 
 internal void
 PushOSEvent(OS_event_list* list,
-            OS_event_type type)
+            OS_event event)
 {
-    OS_event event;
-    event.eventType = type;
-    
     list->events[list->writeOffset] = event;
     
     ++list->writeOffset;
 }
 
-internal void
-PushOSKeyEvent(OS_event_list* list,
-               OS_event_type type,
-               key_code keyCode)
+internal OS_event
+OSEvent(OS_event_type type)
 {
-    OS_event event;
-    
+    OS_event event = {0};
     event.eventType = type;
+    return event;
+}
+
+internal OS_event
+KeyEvent(key_code keyCode,
+         key_state keyState)
+{
+    OS_event event = {0};
+    
+    event.eventType = EVENT_KEY;
     event.keyCode = keyCode;
+    event.keyState = keyState; 
     
-    list->events[list->writeOffset] = event;
-    
-    ++list->writeOffset;
+    return event;
 }
 
 internal OS_event
@@ -57,3 +60,4 @@ ClearEventList(OS_event_list* list)
     
     MemorySet(list->events, 0, list->size * sizeof(OS_event));
 }
+
