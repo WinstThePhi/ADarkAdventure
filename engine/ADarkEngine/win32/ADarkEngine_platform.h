@@ -13,6 +13,9 @@
 #include "ADarkEngine/ADarkEngine_shared.h"
 
 #include "ADarkEngine/core/ADarkEngine_util.c"
+
+#include "game_options.h"
+
 #include "ADarkEngine/core/ADarkEngine_memory.c"
 #include "ADarkEngine/core/ADarkEngine_FileIO.c"
 #include "ADarkEngine/core/ADarkEngine_WorkerThreadInterface.c"

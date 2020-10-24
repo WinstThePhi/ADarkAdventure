@@ -34,7 +34,7 @@ ArenaAlloc(memory_arena* arena, u32 sizeToAlloc)
         
         arena->offset += sizeToAlloc;
         arena->sizeLeft -= sizeToAlloc;
-        //MemorySet(result, 0, sizeToAlloc);
+        MemorySet(result, 0, sizeToAlloc);
         
         u32 align = arena->offset % 16;
         arena->offset += align;

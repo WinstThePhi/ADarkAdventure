@@ -7,10 +7,10 @@
 //~ NOTE(winston): runs when the game starts
 START_GAME(Game_Start)
 {
+    EnterTheDarkness(gameState);
+    
     DisableBuffering(stdout);
     DisableBuffering(stderr);
-    
-    gameState->fpsCap = 60;
     
     DE_ClearFile(ERROR_LOG_PATH);
 }
@@ -18,39 +18,35 @@ START_GAME(Game_Start)
 //~ NOTE(winston): runs every frame
 GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
 {
-#define GRAVITY -0.163f
 #define SPEED 6
     {
-        if(IsKeyDown(gameState, KEY_W))
+        if(IsKeyDown(KEY_W))
         {
             gameState->y -= SPEED;
         }
-        if(IsKeyDown(gameState, KEY_A))
+        if(IsKeyDown(KEY_A))
         {
             gameState->x -= SPEED;
         }
-        if(IsKeyDown(gameState, KEY_S))
+        if(IsKeyDown(KEY_S))
         {
             gameState->y += SPEED;
         }
-        if(IsKeyDown(gameState, KEY_D))
+        if(IsKeyDown(KEY_D))
         {
             gameState->x += SPEED;
         }
     }
 #undef SPEED
     
-    DE2d_PushSolidBackground(renderGroup,
-                             v3_color(0, 188, 255));
+    DE2d_PushSolidBackground(v3_color(0, 188, 255));
     
-    DE2d_PushRectangle(renderGroup,
-                       0, 550,
-                       GetBackBufferWidth(renderGroup), 
-                       GetBackBufferHeight(renderGroup) - 550,
+    DE2d_PushRectangle(0, 550,
+                       GetBackBufferWidth(), 
+                       GetBackBufferHeight() - 550,
                        v3_color(155, 118, 83));
     
-    DE2d_PushRectangle(renderGroup,
-                       gameState->x, gameState->y,
+    DE2d_PushRectangle(gameState->x, gameState->y,
                        100, 100,
                        v3_color(255, 255, 255));
 }

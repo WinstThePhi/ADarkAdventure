@@ -3,7 +3,30 @@
 
 #include "ADarkEngine/core/ADarkEngine_renderer.h"
 
-#define BYTES_PER_PIXEL 4
+global render_group* theGreatThreeOfRendering;
+
+inline u16 
+GetBackBufferWidth()
+{
+    if(theGreatThreeOfRendering == 0)
+    {
+        fprintf(stderr, "Initialize the Dark Engine before continuing...\n");
+        return 0;
+    }
+    return theGreatThreeOfRendering->backBuffer->width;
+}
+
+inline u16 
+GetBackBufferHeight()
+{
+    if(theGreatThreeOfRendering == 0)
+    {
+        fprintf(stderr, "Initialize the Dark Engine before continuing...\n");
+        return 0;
+    }
+    
+    return theGreatThreeOfRendering->backBuffer->height;
+}
 
 // NOTE(winston): software rendering
 inline void
@@ -232,39 +255,48 @@ RenderWeirdGradient(back_buffer* backBuffer, u16 xOffset, u16 yOffset)
 
 //~ NOTE(winston): renderer queueing interface (pass in parameter storage arena)
 internal void 
-DE2d_PushSolidBackground(render_group* renderGroup, 
-                         v3 color)
+DE2d_PushSolidBackground(v3 color)
 {
+    if(!theGreatThreeOfRendering)
+    {
+        fprintf(stderr, "Initialize the Dark Engine before continuing...\n");
+        return;
+    }
+    
     // TODO(winston): maybe change to use a custom stack allocator 
     background_render_group* backgroundRenderGroup = 
-        WT_PushStruct(&renderGroup->workerThreadQueue->parameterStorage, 
+        WT_PushStruct(&theGreatThreeOfRendering->workerThreadQueue->parameterStorage, 
                       background_render_group);
     
-    backgroundRenderGroup->backBuffer = renderGroup->backBuffer;
+    backgroundRenderGroup->backBuffer = theGreatThreeOfRendering->backBuffer;
     backgroundRenderGroup->color = color;
     
-    WT_PushQueue(renderGroup->arena, renderGroup->workerThreadQueue, 
+    WT_PushQueue(theGreatThreeOfRendering->arena, theGreatThreeOfRendering->workerThreadQueue, 
                  DE_2d_FillBackgroundSolid, (void*)backgroundRenderGroup);
 }
 
 internal void 
-DE2d_PushRectangle(render_group* renderGroup, 
-                   u16 x, u16 y, 
+DE2d_PushRectangle(u16 x, u16 y, 
                    u16 width, u16 height, 
                    v3 color)
 {
+    if(!theGreatThreeOfRendering)
+    {
+        fprintf(stderr, "Initialize the Dark Engine before continuing...\n");
+        return;
+    }
     // TODO(winston): maybe change to use a custom stack allocator 
     
-    rect_render_group* rectRenderGroup = WT_PushStruct(&renderGroup->workerThreadQueue->parameterStorage, 
+    rect_render_group* rectRenderGroup = WT_PushStruct(&theGreatThreeOfRendering->workerThreadQueue->parameterStorage, 
                                                        rect_render_group);
     
-    rectRenderGroup->backBuffer = renderGroup->backBuffer;
+    rectRenderGroup->backBuffer = theGreatThreeOfRendering->backBuffer;
     rectRenderGroup->x = x;
     rectRenderGroup->y = y;
     rectRenderGroup->width = width;
     rectRenderGroup->height = height;
     rectRenderGroup->color = color;
     
-    WT_PushQueue(renderGroup->arena, renderGroup->workerThreadQueue, 
+    WT_PushQueue(theGreatThreeOfRendering->arena, theGreatThreeOfRendering->workerThreadQueue, 
                  DE_2d_DrawRectangle, (void*)rectRenderGroup);
 }

@@ -29,7 +29,7 @@ if %compiler%==clang-cl (
 	set defaultCompilerFlags=%defaultCompilerFlags% -fdiagnostics-absolute-paths -O2
 )
 
-set defines=/DFPS_CAP /DSTRETCH /DHIDE_CURSOR /DQUEUE_TEST /DCOMPILER_MSVC
+set defines=/DSTRETCH /DHIDE_CURSOR /DCOMPILER_MSVC
  
 set platformCode=..\engine\ADarkEngine\win32\ADarkEngine_win32_platform.c
 set gameCode=..\src\game.c
@@ -57,7 +57,7 @@ pushd build
 REM start /b /wait ..\engine\ADarkEngine\code_generator\build.bat
 
 pushd ..\data
-..\build\code_generator\code_generator.exe game_state.dark
+REM ..\build\code_generator\code_generator.exe game_state.dark
 popd
 
 if NOT "%1"=="reload" (

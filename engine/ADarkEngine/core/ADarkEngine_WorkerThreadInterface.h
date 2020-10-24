@@ -5,6 +5,10 @@
 #define WORKER_THREAD_STORAGE_SIZE Megabytes(32)
 #endif
 
+#ifndef NUM_OF_WORKER_THREAD_QUEUE_MEMBER
+#define NUM_OF_WORKER_THREAD_QUEUE_MEMBER 32
+#endif
+
 typedef struct ticket_mutex
 {
     u64 volatile ticketServed;
@@ -30,37 +34,29 @@ struct worker_thread_queue_member
     void* (*function)(void*);
     void* parameter;
     
-    worker_thread_queue_member* back;
-    worker_thread_queue_member* next;
-    
     ticket_mutex queueMemberMutex;
 };
 
 typedef struct worker_thread_queue
 {
-    worker_thread_queue_member* head;
-    worker_thread_queue_member* tail;
-    worker_thread_queue_member* at;
+    worker_thread_queue_member members[NUM_OF_WORKER_THREAD_QUEUE_MEMBER];
     
     b32 isRunning;
-    
-    // NOTE(winston): use this for passing into queue functions
     memory_arena parameterStorage;
     
-    u32 queueNodesCreated;
-    u32 numberOfJobsInQueue;
+    u32 writeOffset;
+    
+    u32 pendingJobCount;
     
     // TODO(winston): move this out of here
     OS_call osCall;
 } worker_thread_queue;
 
-internal void BeginTicketMutex(OS_call* call, ticket_mutex* ticketMutex);
+internal void BeginTicketMutex(ticket_mutex* ticketMutex);
 
 internal void EndTicketMutex(ticket_mutex* ticketMutex);
 
 internal u32 WT_ProcessWorkQueue(void* temp);
-
-internal worker_thread_queue_member* WT_PushMember(memory_arena* arena, worker_thread_queue* queue);
 
 internal void* WT_CustomArenaAlloc(memory_arena* arena, 
                                    u32 sizeToAlloc);

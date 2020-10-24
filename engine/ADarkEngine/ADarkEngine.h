@@ -16,4 +16,11 @@
 #include "ADarkEngine/core/ADarkEngine_platform_interface.c"
 #include "ADarkEngine/core/ADarkEngine_renderer.c"
 
+inline void 
+EnterTheDarkness(game_state* gameState)
+{
+    theGreatThreeOfRendering = &gameState->renderGroup;
+    globalGameGameState = gameState;
+}
+
 #endif

@@ -71,21 +71,9 @@ typedef struct render_group
     back_buffer* backBuffer;
 } render_group;
 
-inline u16 
-GetBackBufferWidth(render_group* renderGroup)
-{
-    return renderGroup->backBuffer->width;
-}
-
-inline u16 
-GetBackBufferHeight(render_group* renderGroup)
-{
-    return renderGroup->backBuffer->height;
-}
-
 #include "ADarkEngine/generated/game_state.h"
 
-#define GAME_ARGS game_state* gameState, render_group* renderGroup, memory_arena* arena, worker_thread_queue* queue
+#define GAME_ARGS game_state* gameState, memory_arena* arena, worker_thread_queue* queue
 
 #define GAME_UPDATE_AND_RENDER(name) void name(GAME_ARGS)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
@@ -120,11 +108,13 @@ internal OS_event KeyEvent(key_code keyCode,
 
 internal void ClearEventList(OS_event_list* list);
 
+global game_state* globalGameGameState;
+
 inline b32 
-IsKeyDown(game_state* gameState, key_code keyCode)
+IsKeyDown(key_code keyCode)
 {
     return (keyCode < KEY_MAX && keyCode > KEY_NULL) ?
-        gameState->keyData[keyCode].isDown : 0;
+        globalGameGameState->keyData[keyCode].isDown : 0;
 }
 
 #endif

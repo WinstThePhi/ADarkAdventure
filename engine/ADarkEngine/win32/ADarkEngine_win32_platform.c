@@ -4,15 +4,19 @@
 #include "ADarkEngine/win32/ADarkEngine_platform.h"
 
 #ifndef WIDTH
-#define WIDTH 1280
+#error "WIDTH is not defined.  Check game_options.h for define."
 #endif
 
 #ifndef HEIGHT
-#define HEIGHT 720
+#error "HEIGHT is not defined.  Check game_options.h for define."
 #endif
 
 #ifndef BIG_BOI_ALLOC_SIZE
-#define BIG_BOI_ALLOC_SIZE Gigabytes(1)
+#error "BIG_BOI_ALLOC_SIZE is not defined.  Check game_options.h for define."
+#endif 
+
+#ifndef WINDOW_TITLE
+#error "WINDOW_TITLE is not defined.  Check game_options.h for define."
 #endif 
 
 global game_state globalGameState = {0};
@@ -86,7 +90,6 @@ Win32_GetFileLastModifiedTime(char* filename)
 
 internal game_code
 Win32_LoadGameCode(memory_arena* localArena, 
-                   render_group* renderGroup, 
                    char* dllName,
                    worker_thread_queue* queue)
 {
@@ -126,7 +129,6 @@ Win32_LoadGameCode(memory_arena* localArena,
     }
     
     gameCodeLoad.Game_Start(&globalGameState,
-                            renderGroup,
                             localArena,
                             queue);
     
@@ -138,11 +140,9 @@ Win32_LoadGameCode(memory_arena* localArena,
 internal void
 Win32_UnloadGameCode(game_code* gameCode,
                      memory_arena* localArena,
-                     render_group* renderGroup, 
                      worker_thread_queue* queue)
 {
     gameCode->Game_End(&globalGameState,
-                       renderGroup,
                        localArena,
                        queue);
     
@@ -440,7 +440,7 @@ i32 WinMain(HINSTANCE hInstance,
         HWND window = 
             CreateWindowExA(0,
                             "Window Class",
-                            "A Dark Adventure",
+                            WINDOW_TITLE,
                             dwStyle,
                             CW_USEDEFAULT,
                             CW_USEDEFAULT,
@@ -477,6 +477,7 @@ i32 WinMain(HINSTANCE hInstance,
             
             f32 lastTime = GetTime_MS();
             
+            // NOTE(winston): backBuffer member fill out
             backBuffer.memory = globalWin32BackBuffer.memory;
             backBuffer.height = globalWin32BackBuffer.height;
             backBuffer.width = globalWin32BackBuffer.width;
@@ -490,14 +491,19 @@ i32 WinMain(HINSTANCE hInstance,
                 &backBuffer
             };
             
+            globalGameState.renderGroup = renderGroup;
+            
             HDC hdc = GetDC(window);
             
             char dllName[] = "game.dll";
             
-            globalGameState.fpsCap = 60;
+#ifndef FRAME_CAP
+#error "Define FRAME_CAP in game_options.h"
+#endif 
+            
+            globalGameState.fpsCap = FRAME_CAP;
             
             game_code gameCode = Win32_LoadGameCode(&arena,
-                                                    &renderGroup,
                                                     dllName,
                                                     &workerThreadQueue);
             
@@ -516,10 +522,8 @@ i32 WinMain(HINSTANCE hInstance,
                 {
                     Win32_UnloadGameCode(&gameCode,
                                          &arena,
-                                         &renderGroup,
                                          &workerThreadQueue);
                     gameCode = Win32_LoadGameCode(&arena,
-                                                  &renderGroup,
                                                   dllName,
                                                   &workerThreadQueue);
                 }
@@ -529,7 +533,6 @@ i32 WinMain(HINSTANCE hInstance,
                 ProcessOSMessages(&globalGameState);
                 
                 gameCode.Game_UpdateAndRender(&globalGameState,
-                                              &renderGroup,
                                               &arena,
                                               &workerThreadQueue);
                 
@@ -553,19 +556,16 @@ i32 WinMain(HINSTANCE hInstance,
                 f32 currentTime = GetTime_MS();
                 f32 timeElapsed = currentTime - lastTime;
                 
-#ifdef FPS_CAP
                 if(timeElapsed < msCap)
                 {
                     u32 timeToSleep = (u32)(msCap - timeElapsed);
-                    
                     Sleep((DWORD)(timeToSleep));
                 }
-#endif
                 
-#if 0
+#if 1
                 char title[64];
                 
-                _snprintf_s(title, 64, 64, "A Dark Adventure - %.02f ms", timeElapsed);
+                _snprintf_s(title, 64, 64, "A Dark Adventure - %.03f ms", timeElapsed);
                 
                 SetWindowTextA(window,
                                title);
@@ -575,13 +575,12 @@ i32 WinMain(HINSTANCE hInstance,
             
             DestroyWindow(window);
             
-            workerThreadQueue.isRunning = 1;
+            workerThreadQueue.isRunning = 0;
             WaitForSingleObject(workerThread, INFINITE);
             
             
             Win32_UnloadGameCode(&gameCode,
                                  &arena,
-                                 &renderGroup,
                                  &workerThreadQueue);
             
             ReleaseDC(window, hdc);
