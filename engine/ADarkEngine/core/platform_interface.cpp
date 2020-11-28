@@ -1,5 +1,5 @@
 
-#include "ADarkEngine/core/ADarkEngine_platform_interface.h"
+#include "ADarkEngine/core/platform_interface.h"
 
 internal OS_event_list
 GenerateEventList(memory_arena* arena, u32 size)
@@ -27,7 +27,7 @@ PushOSEvent(OS_event_list* list,
 internal OS_event
 OSEvent(OS_event_type type)
 {
-    OS_event event = {0};
+    OS_event event = {};
     event.eventType = type;
     return event;
 }
@@ -36,7 +36,7 @@ internal OS_event
 KeyEvent(key_code keyCode,
          key_state keyState)
 {
-    OS_event event = {0};
+    OS_event event = {};
     
     event.eventType = EVENT_KEY;
     event.keyCode = keyCode;

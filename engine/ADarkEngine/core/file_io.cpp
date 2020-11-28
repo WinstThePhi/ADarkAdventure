@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "ADarkEngine/core/ADarkEngine_FileIO.h"
+#include "ADarkEngine/core/file_io.h"
 
 // NOTE(winston): Does not count null-terminate byte, I think
 // TODO(winston): Maybe check to see if the above is true.
@@ -150,8 +150,25 @@ DE_LogError(char* error)
     DE_WriteFileAppend(ERROR_LOG_PATH,
                        "\n");
 #else 
-    fprintf(stderr, "ERROR: ");
+    fprintf(stderr, "ERROR (DE2d): ");
     fprintf(stderr, "%s", error);
+    fprintf(stderr, "\n");
+#endif
+}
+
+internal void
+DE_LogInfo(char* info)
+{
+#ifndef INFO_TO_STDOUT
+    DE_WriteFileAppend(INFO_LOG_PATH,
+                       "ERROR: ");
+    DE_WriteFileAppend(INFO_LOG_PATH,
+                       info);
+    DE_WriteFileAppend(INFO_LOG_PATH,
+                       "\n");
+#else 
+    fprintf(stderr, "INFO (DE2d): ");
+    fprintf(stderr, "%s", info);
     fprintf(stderr, "\n");
 #endif
 }

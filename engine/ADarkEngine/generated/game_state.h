@@ -13,6 +13,8 @@ typedef struct game_state
     u16 x;
     u16 y;
     
+    back_buffer tiger;
+    
     render_group renderGroup;
 } game_state;
 

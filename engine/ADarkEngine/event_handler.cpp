@@ -1,9 +1,11 @@
 
 //whatever events you want to handle
-internal void
-ProcessOSMessages(game_state* gameState)
+internal void*
+ProcessOSMessages(void* temp)
 {
-    OS_event event = {0};
+    game_state* gameState = (game_state*)temp;
+    
+    OS_event event = {};
     event = GetNextOSEvent(&gameState->eventList);
     
     while(event.eventType)
@@ -59,4 +61,6 @@ gameState->keyData[KEY_##keyID].isDown = 0;\
     }
     
     ClearEventList(&gameState->eventList);
+    
+    return 0;
 }

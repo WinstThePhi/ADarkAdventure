@@ -13,15 +13,15 @@ set game=game.dll
 
 set includes=/I ..\include\ /I ..\engine\
 
-set defaultCompilerFlags=%includes% /nologo /Zi /FC /std:c11
+set defaultCompilerFlags=%includes% /nologo /Zi /FC /Fm
 REM -fdiagnostics-absolute-paths -O2
 
 set platformLinkSettings=/link user32.lib gdi32.lib opengl32.lib /incremental:no
 
 set exports=/EXPORT:Game_UpdateAndRender /EXPORT:Game_Start /EXPORT:Game_End
-set gameLinkSettings=/link /DLL %exports% /out:%game% /incremental:no
+set gameLinkSettings=/link %exports% /DLL /out:%game% /incremental:no
 
-set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996 
+set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996 /wd4505
 REM -Wno-unused-function -Wno-unused-variable
 
 if %compiler%==clang-cl (
@@ -31,8 +31,8 @@ if %compiler%==clang-cl (
 
 set defines=/DSTRETCH /DHIDE_CURSOR /DCOMPILER_MSVC
  
-set platformCode=..\engine\ADarkEngine\win32\ADarkEngine_win32_platform.c
-set gameCode=..\src\game.c
+set platformCode=..\engine\ADarkEngine\win32\win32_platform.cpp
+set gameCode=..\src\game.cpp
 
 if not exist build mkdir build
 
@@ -42,10 +42,10 @@ if "%1"=="generator" (
 	start /b /wait ..\engine\ADarkEngine\code_generator\build.bat
 
 	REM delete unnecessary files
-	del /q /f /s *.obj *.lib *.ilk *.exp
+	del /q /f *.lib *.obj *.ilk *.exp
 
 	REM copy to code_generator
-	move code_generator.* code_generator\
+	REM move code_generator.* code_generator\
 	move simple_preprocessor.* code_generator\
 
 	popd

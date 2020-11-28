@@ -4,17 +4,17 @@
 #include <stdio.h>
 
 //custom game engine
-#include "ADarkEngine/core/ADarkEngine_layer.h"
+#include "ADarkEngine/core/layer.h"
 
-#include "ADarkEngine/ADarkEngine_shared.h"
+#include "ADarkEngine/shared.h"
 
 // NOTE(winston): maybe consider a modular system as the codebase gets bigger
-#include "ADarkEngine/core/ADarkEngine_util.c"
-#include "ADarkEngine/core/ADarkEngine_memory.c"
-#include "ADarkEngine/core/ADarkEngine_FileIO.c"
-#include "ADarkEngine/core/ADarkEngine_WorkerThreadInterface.c"
-#include "ADarkEngine/core/ADarkEngine_platform_interface.c"
-#include "ADarkEngine/core/ADarkEngine_renderer.c"
+#include "ADarkEngine/core/util.cpp"
+#include "ADarkEngine/core/memory.cpp"
+#include "ADarkEngine/core/file_io.cpp"
+#include "ADarkEngine/core/worker_thread_interface.cpp"
+#include "ADarkEngine/core/platform_interface.cpp"
+#include "ADarkEngine/core/renderer.cpp"
 
 inline void 
 EnterTheDarkness(game_state* gameState)

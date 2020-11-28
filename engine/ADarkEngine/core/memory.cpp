@@ -1,7 +1,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "ADarkEngine/core/ADarkEngine_memory.h"
+#include "ADarkEngine/core/memory.h"
 
 internal b32 
 IsPowerOfTwo(uintptr_t test)
@@ -47,7 +47,7 @@ ArenaAlloc(memory_arena* arena, u32 sizeToAlloc)
 internal temp_memory
 temp_arena_start(memory_arena* arena, u32 size)
 {
-    temp_memory tempArena = {0};
+    temp_memory tempArena = {};
     
     tempArena.parentArena = arena;
     tempArena.parentOffset = arena->offset;
@@ -99,7 +99,7 @@ internal memory_arena
 mini_arena_from_arena(memory_arena* parentArena, 
                       u32 sizeOfNewArena)
 {
-    memory_arena result = {0};
+    memory_arena result = {};
     
     result.memory = ArenaAlloc(parentArena, sizeOfNewArena);
     result.size = sizeOfNewArena;

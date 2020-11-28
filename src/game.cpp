@@ -15,10 +15,12 @@ START_GAME(Game_Start)
     DE_ClearFile(ERROR_LOG_PATH);
 }
 
+
 //~ NOTE(winston): runs every frame
 GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
 {
-#define SPEED 6
+#if 0
+#define SPEED 4
     {
         if(IsKeyDown(KEY_W))
         {
@@ -49,6 +51,7 @@ GAME_UPDATE_AND_RENDER(Game_UpdateAndRender)
     DE2d_PushRectangle(gameState->x, gameState->y,
                        100, 100,
                        v3_color(255, 255, 255));
+#endif
 }
 
 //~ NOTE(winston): Runs when unloaded or ended

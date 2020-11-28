@@ -2,9 +2,8 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-#include "ADarkEngine\ADarkEngine_layer.h"
-#include "ADarkEngine\ADarkEngine_util.h"
 #include "ADarkEngine\code_generator\simple_preprocessor.h"
 
 #ifndef SUPPORTED_EXTENSIONS
@@ -89,19 +88,21 @@ GetExtensions(char* extensionsFile)
     
     u32 lineCount = GetNumberOfLinesInFile(extensionsFile);
     
-    extensions result = {0};
+    extensions result = {};
     char** extensionChar = (char**)malloc(lineCount * sizeof(char*));
     
+    extensionChar[0] = (char*)malloc(3 * sizeof(char));
     extensionChar[0] = strtok(extensionsReadResult, "\n");
     
     for(u32 i = 1; i < lineCount; ++i)
     {
+        //extensionChar[i] = (char*)malloc(3 * sizeof(char));
         extensionChar[i] = strtok(0, "\n");
     }
     
     result.extension = extensionChar;
     
-    // TODO(winston): not always the case, FIX ME GAY BOI
+    // TODO(winston): not always the case, FIX ME, GAY BOI
     result.numberOfExtensions = lineCount;
     
     free(extensionsReadResult);
@@ -112,6 +113,13 @@ GetExtensions(char* extensionsFile)
 internal void
 FreeExtensions(extensions* extension)
 {
+#if 0
+    for(i32 i = 0; i < extension->numberOfExtensions; ++i)
+    {
+        free(extension->extension[i]);
+    }
+#endif
+    
     extension->numberOfExtensions = 0;
     free(extension->extension);
 }
@@ -147,7 +155,7 @@ new_file_list()
     head->next = tail;
     tail->back = head;
     
-    file_list result = {0};
+    file_list result = {};
     result.head = head;
     result.tail = tail;
     
@@ -223,17 +231,42 @@ GetNextFileInList(file_list* list)
 internal tokenizer
 TokenizeFileData(char* fileData)
 {
-    tokenizer result = {0};
+    tokenizer result = {};
     result.tokens = (token*)malloc((strlen(fileData) + 1) * sizeof(token));
     
     b32 tokenizerRunning = 1;
     i32 i = 0;
+    b32 preprocessorStart = 0;
     
     while(tokenizerRunning)
     {
+        if(preprocessorStart)
+        {
+            i32* iReference = &i;
+            while(preprocessorStart && (i < strlen(fileData)))
+            {
+                char atChar = fileData[*iReference];
+                
+                token tok = {};
+                tok.text = atChar;
+                tok.type = TOKEN_PREPROCESSOR;
+                
+                if(atChar == '\n')
+                {
+                    preprocessorStart = 0;
+                    break;
+                }
+                else
+                {
+                    result.tokens[*iReference] = tok;
+                    ++(*iReference);
+                }
+            }
+        }
+        
         char atChar = fileData[i];
         
-        token tok = {0};
+        token tok = {};
         tok.text = atChar;
         
         switch(atChar)
@@ -262,8 +295,11 @@ TokenizeFileData(char* fileData)
             {
                 tok.type = TOKEN_BRACKET_CLOSE;
             } break;
-            case ' ':
             case '\n':
+            {
+                tok.type = TOKEN_NEW_LINE;
+            }break;
+            case ' ':
             case '\t':
             {
                 tok.type = TOKEN_WHITESPACE;
@@ -272,6 +308,11 @@ TokenizeFileData(char* fileData)
             {
                 tok.type = TOKEN_END_OF_FILE;
                 tokenizerRunning = 0;
+            } break;
+            case '#':
+            {
+                tok.type = TOKEN_PREPROCESSOR;
+                preprocessorStart = 1;
             } break;
             default:
             {
@@ -317,16 +358,39 @@ IncrementTokenizerNoWhitespace(tokenizer* tokenizerThing)
     {
         if((tokenizerThing->at)->type != TOKEN_END_OF_FILE)
         {
+            INCREMENT_TOKENIZER:;
+            
             ++tokenizerThing->at;
-            if((tokenizerThing->at)->type != TOKEN_WHITESPACE)
+            if((tokenizerThing->at)->type != TOKEN_WHITESPACE && 
+               (tokenizerThing->at)->type != TOKEN_NEW_LINE)
             {
                 return 1;
+            }
+            else
+            {
+                goto INCREMENT_TOKENIZER;
             }
         }
         else
         {
             return 0;
         }
+    }
+}
+
+internal void
+PrintTokenType(token* token)
+{
+    switch(token->type)
+    {
+#define Token(tokenName) \
+case TOKEN_##tokenName: \
+{ \
+printf(#tokenName); \
+printf("\n"); \
+} break;
+#include "token.inc"
+#undef TOKEN
     }
 }
 
@@ -393,11 +457,13 @@ int main(i32 argCount, char** args)
         
         tokenizer tokens = TokenizeFileData(fileData);
         
-        printf("%c", (tokens.at)->text);
+        printf("%c ", (tokens.at)->text);
+        PrintTokenType(tokens.at);
         
         while(IncrementTokenizerNoWhitespace(&tokens))
         {
-            printf("%c", (tokens.at)->text);
+            printf("%c ", (tokens.at)->text);
+            PrintTokenType(tokens.at);
         }
         
         FreeTokenizer(&tokens);

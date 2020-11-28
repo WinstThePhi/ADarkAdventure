@@ -1,7 +1,12 @@
 
-#define ERROR_LOG_PATH "../data/platform_error.txt"
+//#define ERROR_LOG_PATH "../data/platform_error.txt"
+#define INFO_TO_STDOUT
 
-#include "ADarkEngine/win32/ADarkEngine_platform.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <GL/gl.h>
+
+#include "ADarkEngine/win32/platform.h"
 
 #ifndef WIDTH
 #error "WIDTH is not defined.  Check game_options.h for define."
@@ -19,14 +24,30 @@
 #error "WINDOW_TITLE is not defined.  Check game_options.h for define."
 #endif 
 
-global game_state globalGameState = {0};
-global win32_back_buffer globalWin32BackBuffer = {0};
-global WINDOWPLACEMENT g_wpPrev = {0};
-global memory_arena arena = {0};
-global worker_thread_queue workerThreadQueue = {0};
-global OS_call os = {0};
-global LARGE_INTEGER performanceFrequency = {0};
-global back_buffer backBuffer = {0};
+#ifndef FRAME_CAP
+#error "Define FRAME_CAP in game_options.h"
+#endif 
+
+global game_state globalGameState = {};
+global win32_back_buffer globalWin32BackBuffer = {};
+global WINDOWPLACEMENT g_wpPrev = {};
+global memory_arena arena = {};
+global worker_thread_queue workerThreadQueue = {};
+global LARGE_INTEGER performanceFrequency = {};
+global back_buffer backBuffer = {};
+
+internal f32 
+GetTime_MS()
+{
+    LARGE_INTEGER time;
+    QueryPerformanceCounter(&time);
+    
+    f64 MS_elapsed = 
+        ((f64)time.QuadPart / (f64)performanceFrequency.QuadPart);
+    MS_elapsed *= 1000;
+    
+    return (f32)MS_elapsed;
+}
 
 internal void 
 ToggleFullscreen(HWND window)
@@ -35,7 +56,7 @@ ToggleFullscreen(HWND window)
     
     DWORD style = GetWindowLong(window, GWL_STYLE);
     if((style & WS_OVERLAPPEDWINDOW) && !globalGameState.isFullscreen) {
-        MONITORINFO mi = {0};
+        MONITORINFO mi = {};
         mi.cbSize = sizeof(mi);
         
         if (GetWindowPlacement(window, &g_wpPrev) &&
@@ -77,7 +98,7 @@ Win32_GetFileLastModifiedTime(char* filename)
                                     OPEN_ALWAYS,
                                     FILE_ATTRIBUTE_NORMAL,
                                     0);
-    FILETIME result = {0};
+    FILETIME result = {};
     GetFileTime(fileHandle,
                 0,
                 0,
@@ -95,7 +116,7 @@ Win32_LoadGameCode(memory_arena* localArena,
 {
     game_code gameCodeLoad;
     
-    char tempDLL[] = "ADarkAdventure_temp.dll";
+    char tempDLL[] = "temp.dll";
     
     CopyFile(dllName,
              tempDLL,
@@ -157,11 +178,11 @@ Win32_UnloadGameCode(game_code* gameCode,
 internal window_dimensions
 Win32_GetWindowDimensions(HWND window)
 {
-    RECT dataRect = {0};
+    RECT dataRect = {};
     GetClientRect(window,
                   &dataRect);
     
-    window_dimensions dimension = {0};
+    window_dimensions dimension = {};
     dimension.width = (u16)(dataRect.right - dataRect.left);
     dimension.height = (u16)(dataRect.bottom - dataRect.top);
     
@@ -173,7 +194,7 @@ new_back_buffer(memory_arena* localArena,
                 u16 width, 
                 u16 height)
 {
-    win32_back_buffer win32BackBuffer = {0};
+    win32_back_buffer win32BackBuffer = {};
     
     win32BackBuffer.width = width;
     win32BackBuffer.height = height;
@@ -195,19 +216,8 @@ new_back_buffer(memory_arena* localArena,
 internal void*
 Win32_UpdateWindow(void* temp)
 {
-    window_update_group* updateGroup = (window_update_group*)temp;
-    
-    StretchDIBits(updateGroup->hdc,
-                  0, 0,
-                  updateGroup->windowWidth,
-                  updateGroup->windowHeight,
-                  0, 0,
-                  updateGroup->backBuffer->width,
-                  updateGroup->backBuffer->height,
-                  updateGroup->backBuffer->memory,
-                  &updateGroup->backBuffer->bitmapInfo,
-                  DIB_RGB_COLORS,
-                  SRCCOPY);
+    HDC* hdc = (HDC*)temp;
+    SwapBuffers(*hdc);
     return 0;
 }
 
@@ -217,15 +227,10 @@ Win32_DefaultWindowCallback(HWND window,
                             WPARAM wParam,
                             LPARAM lParam)
 {
-    LRESULT result = {0};
+    LRESULT result = {};
     
     switch(message)
     {
-        case WM_QUIT:
-        {
-            PushOSEvent(&globalGameState.eventList,
-                        OSEvent(WINDOW_CLOSE));
-        } break;
         case WM_CLOSE:
         {
             PushOSEvent(&globalGameState.eventList,
@@ -251,24 +256,19 @@ Win32_DefaultWindowCallback(HWND window,
             window_dimensions dimension = 
                 Win32_GetWindowDimensions(window);
             
-            PAINTSTRUCT paintStruct = {0};
+            PAINTSTRUCT paintStruct = {};
             HDC paintDC = BeginPaint(window,
                                      &paintStruct);
             
             window_update_group* updateGroup = 
                 WT_PushStruct(&workerThreadQueue.parameterStorage, 
                               window_update_group);
-            
-            updateGroup->hdc = paintDC;
-            updateGroup->backBuffer = &globalWin32BackBuffer;
-            updateGroup->windowWidth = dimension.width;
-            updateGroup->windowHeight = dimension.height;
-            
-            WT_PushQueue(&arena, 
-                         &workerThreadQueue,
+#if 0
+            WT_PushQueue(&workerThreadQueue,
                          Win32_UpdateWindow,
                          updateGroup);
-            
+#endif
+            Win32_UpdateWindow(&paintDC);
             EndPaint(window,
                      &paintStruct);
         } break;
@@ -277,53 +277,7 @@ Win32_DefaultWindowCallback(HWND window,
         case WM_KEYUP:
         case WM_KEYDOWN:
         {
-            u16 VKcode = (u16)wParam;
-            b32 isDown = ((lParam) & (1 << 31)) == 0;
-            b32 wasDown = ((lParam) & (1 << 30)) != 0;
-            if(isDown != wasDown)
-            {
-                key_code keyCode = KEY_NULL;
-                
-                switch(VKcode)
-                {
-                    
-#define Key(keyID) \
-case VK_##keyID: \
-{ \
-keyCode = KEY_##keyID; \
-} break;
-                    
-#include "ADarkEngine/key_list.inc"
-#undef Key
-                    
-                    case VK_F11:
-                    {
-#ifdef FULLSCREEN
-                        if(isDown)
-                            ToggleFullscreen(window);
-#endif
-                    } break;
-                }
-                
-                if(isDown)
-                {
-                    PushOSEvent(&globalGameState.eventList,
-                                KeyEvent(keyCode, KEY_PRESS));
-                }
-                else
-                {
-                    PushOSEvent(&globalGameState.eventList,
-                                KeyEvent(keyCode, KEY_RELEASE));
-                }
-                
-                // NOTE(winston): maybe have an #ifndef F4_CLOSES_WINDOW here?
-                b32 altKeyWasDown = ((lParam) & (1 << 29));
-                if(altKeyWasDown && (VKcode == VK_F4))
-                {
-                    PushOSEvent(&globalGameState.eventList, 
-                                OSEvent(WINDOW_CLOSE));
-                }
-            }
+            Assert(0 && "Key input went through filter.");
         } break;
         default:
         {
@@ -334,29 +288,73 @@ keyCode = KEY_##keyID; \
     return result;
 }
 
-internal void
-Win32_ProcessMessageQueue(HWND window)
+internal void*
+Win32_ProcessMessageQueue(void* temp)
 {
+    HWND window = ((window_group*)temp)->window;
     MSG message;
     while(PeekMessageA(&message, window, 0, 0, PM_REMOVE))
     {
-        TranslateMessage(&message);
-        DispatchMessage(&message);
+        switch(message.message)
+        {
+            case WM_QUIT:
+            {
+                PushOSEvent(&globalGameState.eventList,
+                            OSEvent(WINDOW_CLOSE));
+            } break;
+            case WM_SYSKEYUP:
+            case WM_SYSKEYDOWN:
+            case WM_KEYUP:
+            case WM_KEYDOWN:
+            {
+                u16 VKcode = (u16)message.wParam;
+                b32 isDown = ((message.lParam) & (1 << 31)) == 0;
+                b32 wasDown = ((message.lParam) & (1 << 30)) != 0;
+                if(isDown != wasDown)
+                {
+                    key_code keyCode = KEY_NULL;
+                    
+                    switch(VKcode)
+                    {
+                        
+#define Key(keyID) \
+case VK_##keyID: \
+{ \
+keyCode = KEY_##keyID; \
+} break;
+                        
+#include "ADarkEngine/key_list.inc"
+#undef Key
+                    }
+                    
+                    if(isDown)
+                    {
+                        PushOSEvent(&globalGameState.eventList,
+                                    KeyEvent(keyCode, KEY_PRESS));
+                    }
+                    else
+                    {
+                        PushOSEvent(&globalGameState.eventList,
+                                    KeyEvent(keyCode, KEY_RELEASE));
+                    }
+                    
+                    // NOTE(winston): maybe have an #ifndef F4_CLOSES_WINDOW here?
+                    b32 altKeyWasDown = ((message.lParam) & (1 << 29));
+                    if(altKeyWasDown && (VKcode == VK_F4))
+                    {
+                        PushOSEvent(&globalGameState.eventList, 
+                                    OSEvent(WINDOW_CLOSE));
+                    }
+                }
+            } break;
+            default:
+            {
+                TranslateMessage(&message);
+                DispatchMessage(&message);
+            } break;
+        }
     }
-}
-
-
-internal f32 
-GetTime_MS()
-{
-    LARGE_INTEGER time;
-    QueryPerformanceCounter(&time);
-    
-    f64 MS_elapsed = 
-        ((f64)time.QuadPart / (f64)performanceFrequency.QuadPart);
-    MS_elapsed *= 1000;
-    
-    return (f32)MS_elapsed;
+    return 0;
 }
 
 internal void 
@@ -365,22 +363,14 @@ ThreadSleep(f32 numOfMS)
     Sleep((DWORD)numOfMS);
 }
 
-#ifdef QUEUE_TEST
-internal void*
-PrintWinston(void* placeholder)
-{
-    printf("Hi Winston!\n");
-    return 0;
-}
-#endif 
-
-internal OS_call
+internal os_call
 GenerateOSCalls()
 {
-    OS_call result = {0};
+    os_call result = {};
     
     result.GetTime_MS = GetTime_MS;
     result.ThreadSleep = ThreadSleep;
+    result.LoadOpenGLProcedure = Win32_LoadOpenGLProcedure;
     
     return result;
 }
@@ -401,12 +391,12 @@ i32 WinMain(HINSTANCE hInstance,
                                 MEM_COMMIT,
                                 PAGE_READWRITE);
     
-    DE_ClearFile(ERROR_LOG_PATH);
+    //DE_ClearFile(ERROR_LOG_PATH);
     
     if(!memory)
     {
         DE_LogError("Failed allocate memory.");
-        return -1;
+        QUIT();
     }
     
     arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
@@ -414,12 +404,14 @@ i32 WinMain(HINSTANCE hInstance,
     if(!arena.size)
     {
         DE_LogError("Failed to create memory arena.");
-        return -1;
+        
+        VirtualFree(memory, 0, MEM_RELEASE);
+        QUIT();
     }
     
     globalWin32BackBuffer = new_back_buffer(&arena, WIDTH, HEIGHT);
     
-    WNDCLASSA windowClass = {0};
+    WNDCLASSA windowClass = {};
     windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     windowClass.lpfnWndProc = Win32_DefaultWindowCallback;
     windowClass.hInstance = hInstance;
@@ -463,6 +455,7 @@ i32 WinMain(HINSTANCE hInstance,
             workerThreadQueue.osCall = os;
             
 #define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
+#if 0
             HANDLE workerThread = 
                 CreateThread(0,
                              0,
@@ -470,12 +463,12 @@ i32 WinMain(HINSTANCE hInstance,
                              (void*)&workerThreadQueue,
                              0,
                              &threadContext);
+#endif
 #undef WIN32_THREAD_FUNC_TEMPLATE
             
             globalGameState.isRunning = 1;
             globalGameState.eventList = GenerateEventList(&arena, 64);
             
-            f32 lastTime = GetTime_MS();
             
             // NOTE(winston): backBuffer member fill out
             backBuffer.memory = globalWin32BackBuffer.memory;
@@ -497,23 +490,43 @@ i32 WinMain(HINSTANCE hInstance,
             
             char dllName[] = "game.dll";
             
-#ifndef FRAME_CAP
-#error "Define FRAME_CAP in game_options.h"
-#endif 
-            
             globalGameState.fpsCap = FRAME_CAP;
+            
+            if(Win32_InitOpenGL(window, hInstance))
+            {
+                DE_LogInfo("OpenGL successfully initialized.");
+            }
+            else
+            {
+                DE_LogError("OpenGL failed to be initialized.");
+                VirtualFree(memory, 0, MEM_RELEASE);
+                QUIT();
+            }
             
             game_code gameCode = Win32_LoadGameCode(&arena,
                                                     dllName,
                                                     &workerThreadQueue);
             
             gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
-            f32 msCap = (1000.0f / (f32)globalGameState.fpsCap);
+            f32 msCap = (1000.0f / (f32)FRAME_CAP);
             
-            //Win32_InitOpenGL(window);
+            window_group* windowGroup = 
+                Arena_PushStruct(&arena, window_group);
+            
+            windowGroup->window = window;
+            
+            timer_info timer = new_timer_info(performanceFrequency);
+            
+            glViewport(0, 0, 
+                       globalWin32BackBuffer.width, globalWin32BackBuffer.height);
             
             while(globalGameState.isRunning)
             {
+                Win32_BeginFrame(&timer);
+                
+                glClearColor(0.129f, 0.586f, 0.949f, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT);
+                
                 FILETIME currentWriteTime = 
                     Win32_GetFileLastModifiedTime(dllName);
                 
@@ -528,7 +541,7 @@ i32 WinMain(HINSTANCE hInstance,
                                                   &workerThreadQueue);
                 }
                 
-                Win32_ProcessMessageQueue(window);
+                Win32_ProcessMessageQueue((void*)windowGroup);
                 
                 ProcessOSMessages(&globalGameState);
                 
@@ -539,49 +552,22 @@ i32 WinMain(HINSTANCE hInstance,
                 window_dimensions dimension = 
                     Win32_GetWindowDimensions(window);
                 
-                window_update_group* updateGroup = 
-                    WT_PushStruct(&workerThreadQueue.parameterStorage, 
-                                  window_update_group);
+                Win32_UpdateWindow(&hdc);
                 
-                updateGroup->hdc = hdc;
-                updateGroup->backBuffer = &globalWin32BackBuffer;
-                updateGroup->windowWidth = dimension.width;
-                updateGroup->windowHeight = dimension.height;
-                
-                WT_PushQueue(&arena, 
-                             &workerThreadQueue,
-                             Win32_UpdateWindow,
-                             updateGroup);
-                
-                f32 currentTime = GetTime_MS();
-                f32 timeElapsed = currentTime - lastTime;
-                
-                if(timeElapsed < msCap)
-                {
-                    u32 timeToSleep = (u32)(msCap - timeElapsed);
-                    Sleep((DWORD)(timeToSleep));
-                }
-                
-#if 1
-                char title[64];
-                
-                _snprintf_s(title, 64, 64, "A Dark Adventure - %.03f ms", timeElapsed);
-                
-                SetWindowTextA(window,
-                               title);
-#endif
-                lastTime = currentTime;
+                Win32_EndFrame(&timer, msCap);
             }
             
             DestroyWindow(window);
             
             workerThreadQueue.isRunning = 0;
+#if 0
             WaitForSingleObject(workerThread, INFINITE);
-            
-            
+#endif
             Win32_UnloadGameCode(&gameCode,
                                  &arena,
                                  &workerThreadQueue);
+            
+            Win32_CleanUpOpenGL(window);
             
             ReleaseDC(window, hdc);
         }

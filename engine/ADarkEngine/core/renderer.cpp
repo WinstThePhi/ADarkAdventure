@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "ADarkEngine/core/ADarkEngine_renderer.h"
+#include "ADarkEngine/core/renderer.h"
 
 global render_group* theGreatThreeOfRendering;
 
@@ -146,16 +146,20 @@ DE_2d_DrawRectangleOutline(back_buffer* backBuffer,
 }
 
 // TODO(winston): fix this to use new file read function
-#if 0
+#if 1
 // TODO(winston): pretty broken here
 // NOTE(winston): Could be a read error
 internal back_buffer
 DE_LoadBMP(memory_arena* arena, 
            char* filename)
 {
-    back_buffer result = {0};
+    back_buffer result = {};
     
-    char* readResult = DE_ReadFile(arena, filename);
+    memory_parameter parameter = {arena, MEMORY_ARENA};
+    
+    char* readResult = 
+        DE_ReadEntireFile(parameter, 
+                          filename);
     
     if(readResult)
     {
@@ -271,7 +275,7 @@ DE2d_PushSolidBackground(v3 color)
     backgroundRenderGroup->backBuffer = theGreatThreeOfRendering->backBuffer;
     backgroundRenderGroup->color = color;
     
-    WT_PushQueue(theGreatThreeOfRendering->arena, theGreatThreeOfRendering->workerThreadQueue, 
+    WT_PushQueue(theGreatThreeOfRendering->workerThreadQueue, 
                  DE_2d_FillBackgroundSolid, (void*)backgroundRenderGroup);
 }
 
@@ -297,6 +301,6 @@ DE2d_PushRectangle(u16 x, u16 y,
     rectRenderGroup->height = height;
     rectRenderGroup->color = color;
     
-    WT_PushQueue(theGreatThreeOfRendering->arena, theGreatThreeOfRendering->workerThreadQueue, 
+    WT_PushQueue(theGreatThreeOfRendering->workerThreadQueue, 
                  DE_2d_DrawRectangle, (void*)rectRenderGroup);
 }
