@@ -23,6 +23,9 @@
 #error "Define FRAME_CAP in game_options.h"
 #endif 
 
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib") 
+
 global game_state globalGameState = {};
 global WINDOWPLACEMENT g_wpPrev = {};
 global os_call os = {};
@@ -171,8 +174,6 @@ Win32_ClearWindow()
 internal void*
 Win32_UpdateWindow(void* temp)
 {
-    HDC* hdc = (HDC*)temp;
-    wglSwapLayerBuffers(*hdc, WGL_SWAP_MAIN_PLANE);
     return 0;
 }
 
@@ -365,6 +366,9 @@ i32 WinMain(HINSTANCE hInstance,
     {
         DWORD dwStyle = (WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_THICKFRAME);
         
+        RECT windowRect = {0, 0, WIDTH, HEIGHT};
+        AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_THICKFRAME, FALSE);
+        
         HWND window = 
             CreateWindowExA(0,
                             windowClass.lpszClassName,
@@ -372,8 +376,8 @@ i32 WinMain(HINSTANCE hInstance,
                             dwStyle,
                             CW_USEDEFAULT,
                             CW_USEDEFAULT,
-                            WIDTH,
-                            HEIGHT,
+                            windowRect.right - windowRect.left,
+                            windowRect.bottom - windowRect.top,
                             0,
                             0,
                             0,
@@ -395,9 +399,9 @@ i32 WinMain(HINSTANCE hInstance,
             
             HDC hdc = GetDC(window);
             
-            char dllName[] = "game.dll";
+            d3d_group d3d(window);
             
-            globalGameState.fpsCap = FRAME_CAP;
+            char dllName[] = "game.dll";
             
             game_code gameCode = Win32_LoadGameCode(arena,
                                                     dllName);
@@ -412,14 +416,11 @@ i32 WinMain(HINSTANCE hInstance,
             
             timer_info timer = new_timer_info();
             
+            globalGameState.fpsCap = FRAME_CAP;
+            
             while(globalGameState.isRunning)
             {
                 Win32_BeginFrame(&timer);
-                
-                window_dimensions dimension = 
-                    Win32_GetWindowDimensions(window);
-                
-                Win32_ClearWindow();
                 
                 FILETIME currentWriteTime = 
                     Win32_GetFileLastModifiedTime(dllName);
@@ -433,13 +434,35 @@ i32 WinMain(HINSTANCE hInstance,
                                                   dllName);
                 }
                 
+                window_dimensions dimension = 
+                    Win32_GetWindowDimensions(window);
+                
+                //Win32_ClearWindow();
+                d3d.Clear(v3_color(0, 168, 255));
+                
                 Win32_ProcessMessageQueue((void*)windowGroup);
+                
                 ProcessOSMessages(&globalGameState);
+                
+                D3D11_VIEWPORT viewport = {0.0f, 0.0f, (FLOAT)dimension.width, (FLOAT)dimension.height, 0.0f, 1.0f};
+                d3d.deviceContext->RSSetViewports(1, &viewport);
+                
+                d3d.deviceContext->OMSetRenderTargets(1, &d3d.renderTargetView, 0);
+                
+                d3d.deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                d3d.deviceContext->IASetInputLayout(d3d.inputLayout);
+                d3d.deviceContext->IASetVertexBuffers(0, 1, &d3d.vertexBuffer, &d3d.vertexStride, &d3d.vertexOffset);
+                
+                d3d.deviceContext->VSSetShader(d3d.vertexShader, 0, 0);
+                d3d.deviceContext->PSSetShader(d3d.pixelShader, 0, 0);
+                
+                d3d.deviceContext->Draw(d3d.vertexCount, 0);
                 
                 gameCode.Game_UpdateAndRender(globalGameState,
                                               arena);
                 
-                Win32_UpdateWindow(&hdc);
+                //Win32_UpdateWindow(&hdc);
+                d3d.UpdateWindow();
                 
                 Win32_EndFrame(&timer, msCap);
             }

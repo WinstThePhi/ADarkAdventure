@@ -45,6 +45,28 @@ typedef union v2
     };
 } v2;
 
+inline v3 
+v3_color(u8 r, u8 g, u8 b)
+{
+    v3 result = {};
+    result.r = r;
+    result.g = g;
+    result.b = b;
+    
+    return result;
+}
+
+inline v3
+v3_coords(u16 x, u16 y, u16 z)
+{
+    v3 result = {};
+    result.x = x;
+    result.y = y;
+    result.z = z;
+    
+    return result;
+}
+
 #ifdef COMPILER_MSVC
 #include <intrin.h>
 inline u64
