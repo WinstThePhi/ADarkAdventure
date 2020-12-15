@@ -1,13 +1,13 @@
 
-#include "ADarkEngine/core/platform_interface.h"
+#include "de_platform_interface.h"
 
-internal OS_event_list
-GenerateEventList(memory_arena* arena, u32 size)
+internal os_event_list
+GenerateEventList(memory_arena& arena, u32 size)
 {
-    OS_event_list result;
+    os_event_list result;
     
     result.events = 
-        (OS_event*)ArenaAlloc(arena, size * sizeof(OS_event));
+        (os_event*)arena.ArenaAlloc(size * sizeof(os_event));
     result.writeOffset = 0;
     result.readOffset = 0;
     result.size = size;
@@ -16,27 +16,27 @@ GenerateEventList(memory_arena* arena, u32 size)
 }
 
 internal void
-PushOSEvent(OS_event_list* list,
-            OS_event event)
+PushOSEvent(os_event_list* list,
+            os_event event)
 {
     list->events[list->writeOffset] = event;
     
     ++list->writeOffset;
 }
 
-internal OS_event
-OSEvent(OS_event_type type)
+inline os_event
+OSEvent(os_event_type type)
 {
-    OS_event event = {};
+    os_event event = {};
     event.eventType = type;
     return event;
 }
 
-internal OS_event
+internal os_event
 KeyEvent(key_code keyCode,
          key_state keyState)
 {
-    OS_event event = {};
+    os_event event = {};
     
     event.eventType = EVENT_KEY;
     event.keyCode = keyCode;
@@ -45,19 +45,19 @@ KeyEvent(key_code keyCode,
     return event;
 }
 
-internal OS_event
-GetNextOSEvent(OS_event_list* list)
+internal os_event
+GetNextOSEvent(os_event_list* list)
 {
     ++list->readOffset;
     return list->events[list->readOffset - 1];
 }
 
 internal void
-ClearEventList(OS_event_list* list)
+ClearEventList(os_event_list* list)
 {
     list->writeOffset = 0;
     list->readOffset = 0;
     
-    MemorySet(list->events, 0, list->size * sizeof(OS_event));
+    MemorySet(list->events, 0, list->size * sizeof(os_event));
 }
 

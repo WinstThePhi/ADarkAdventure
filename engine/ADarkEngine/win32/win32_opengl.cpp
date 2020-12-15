@@ -1,5 +1,5 @@
 
-#include "ADarkEngine/win32/win32_opengl.h"
+#include "win32/win32_opengl.h"
 
 internal void*
 Win32_LoadOpenGLProcedure(char* procedureName)
@@ -28,11 +28,11 @@ Win32_LoadOpenGLProcedure(char* procedureName)
     else
     {
         LOADED:;
-        
+#if 0
         sprintf_s(buffer, 64,
                   "OpenGL loaded function: %s", procedureName);
         DE_LogInfo(buffer);
-        
+#endif
         return result;
     }
 }
@@ -132,7 +132,7 @@ Win32_InitOpenGL(HWND window, HINSTANCE hInstance)
                     wglSwapIntervalEXT(0);
                 }
                 
-                if(LoadAllOpenGLProcedures(&os, &gl))
+                if(DE_LoadAllOpenGLProcedures(&os, &gl))
                 {
                     returnCode = 1;
                 }

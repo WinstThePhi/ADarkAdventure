@@ -1,6 +1,50 @@
 #ifndef _A_DARK_ENGINE_SHARED_H
 #define _A_DARK_ENGINE_SHARED_H
 
+typedef union v4
+{
+    struct
+    {
+        u16 x;
+        u16 y;
+        u16 z;
+        u16 w;
+    };
+    struct
+    {
+        u8 r;
+        u8 g;
+        u8 b;
+        u8 a;
+    };
+} v4;
+
+typedef union v3
+{
+    struct
+    {
+        u16 x;
+        u16 y;
+        u16 z;
+    };
+    struct
+    {
+        u8 r;
+        u8 g;
+        u8 b;
+    };
+} v3;
+
+
+typedef union v2
+{
+    struct
+    {
+        u16 x;
+        u16 y;
+    };
+} v2;
+
 #ifdef COMPILER_MSVC
 #include <intrin.h>
 inline u64

@@ -1,11 +1,10 @@
 
-#include "ADarkEngine/win32/timer.h"
+#include "win32/win32_timer.h"
 
 internal timer_info
-new_timer_info(LARGE_INTEGER performanceFrequency)
+new_timer_info()
 {
     timer_info timerInfo = {};
-    timerInfo.performanceFrequency = performanceFrequency;
     
     timerInfo.lastTime = GetTime_MS();
     

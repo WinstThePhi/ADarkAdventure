@@ -42,29 +42,17 @@
 #define QUIT() \
 return -1
 
-#define Win32_LargeToI64(num) num##.QuadPart
+#define Win32_LargeToI64(num) num.QuadPart
 
-#define BYTES_PER_PIXEL 4
-
-typedef struct win32_back_buffer
-{
-    BITMAPINFO bitmapInfo;
-    
-    void* memory;
-    
-    u16 height;
-    u16 width;
-    
-    u16 pitch;
-} win32_back_buffer;
-
-typedef struct window_dimensions
+typedef struct window_dimensions window_dimensions;
+struct window_dimensions
 {
     u16 width;
     u16 height;
-} window_dimensions;
+};
 
-typedef struct game_code
+typedef struct game_code game_code;
+struct game_code
 {
     HMODULE gameCode;
     FILETIME lastWriteTime;
@@ -73,39 +61,28 @@ typedef struct game_code
     start_game* Game_Start;
     end_game* Game_End;
     
-} game_code;
+};
 
-typedef struct window_update_group
-{
-    HDC hdc;
-    win32_back_buffer* backBuffer;
-    u16 windowWidth;
-    u16 windowHeight;
-} window_update_group;
-
-typedef struct window_group
+typedef struct window_group window_group;
+struct window_group
 {
     HWND window;
-} window_group;
+};
 
 
-internal void ToggleFullscreen(HWND window);
+internal void Win32_ToggleFullscreen(HWND window);
 
 internal FILETIME Win32_GetFileLastModifiedTime(char* filename);
 
-internal game_code Win32_LoadGameCode(memory_arena* localArena, 
-                                      char* dllName,
-                                      worker_thread_queue* queue);
+internal game_code Win32_LoadGameCode(memory_arena& localArena, 
+                                      char* dllName);
 
-internal void Win32_UnloadGameCode(game_code* gameCode,
-                                   memory_arena* localArena,
-                                   worker_thread_queue* queue);
+internal void Win32_UnloadGameCode(game_code& gameCode,
+                                   memory_arena& localArena);
 
 internal window_dimensions Win32_GetWindowDimensions(HWND window);
 
-internal win32_back_buffer new_back_buffer(memory_arena* localArena,
-                                           u16 width, 
-                                           u16 height);
+internal void* Win32_ClearWindow();
 
 internal void* Win32_UpdateWindow(void* temp);
 

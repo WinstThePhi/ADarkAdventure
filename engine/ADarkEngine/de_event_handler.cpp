@@ -5,7 +5,7 @@ ProcessOSMessages(void* temp)
 {
     game_state* gameState = (game_state*)temp;
     
-    OS_event event = {};
+    os_event event = {};
     event = GetNextOSEvent(&gameState->eventList);
     
     while(event.eventType)
@@ -28,7 +28,7 @@ gameState->keyData[KEY_##keyID].isDown = 1;\
                     {
                         switch(event.keyCode)
                         {
-#include "ADarkEngine/key_list.inc"
+#include "key_list.inc"
                             default:
                             {
                             } break;
@@ -43,7 +43,7 @@ gameState->keyData[KEY_##keyID].isDown = 0;\
                     {
                         switch(event.keyCode)
                         {
-#include "ADarkEngine/key_list.inc"
+#include "key_list.inc"
                             default:
                             {
                             } break;

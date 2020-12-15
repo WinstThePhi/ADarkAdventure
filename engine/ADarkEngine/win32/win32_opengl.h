@@ -46,9 +46,7 @@ condition == (void*)0x3 ||    \
 condition == (void*)-1
 
 #define LOAD_WGL_FUNCTION(type, name) \
-name = (type*)Win32_LoadOpenGLProcedure(#name); \
-if(!name) \
-return 0
+name = (type*)Win32_LoadOpenGLProcedure(#name);
 
 internal void* Win32_LoadOpenGLProcedure(char* procedureName);
 

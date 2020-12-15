@@ -4,23 +4,14 @@
 #include <stdio.h>
 
 //custom game engine
-#include "ADarkEngine/core/layer.h"
+#include "core/de_layer.h"
 
-#include "ADarkEngine/shared.h"
+#include "de_shared.h"
 
 // NOTE(winston): maybe consider a modular system as the codebase gets bigger
-#include "ADarkEngine/core/util.cpp"
-#include "ADarkEngine/core/memory.cpp"
-#include "ADarkEngine/core/file_io.cpp"
-#include "ADarkEngine/core/worker_thread_interface.cpp"
-#include "ADarkEngine/core/platform_interface.cpp"
-#include "ADarkEngine/core/renderer.cpp"
-
-inline void 
-EnterTheDarkness(game_state* gameState)
-{
-    theGreatThreeOfRendering = &gameState->renderGroup;
-    globalGameGameState = gameState;
-}
+#include "core/de_util.cpp"
+#include "core/de_memory.cpp"
+#include "core/de_platform_interface.cpp"
+#include "core/de_file_io.cpp"
 
 #endif

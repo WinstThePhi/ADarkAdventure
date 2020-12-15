@@ -11,17 +11,17 @@ REM set compiler=cl
 set executable=ADarkAdventure.exe
 set game=game.dll
 
-set includes=/I ..\include\ /I ..\engine\
+set includes=/I ..\include\ /I ..\engine\ADarkEngine\
 
 set defaultCompilerFlags=%includes% /nologo /Zi /FC /Fm
 REM -fdiagnostics-absolute-paths -O2
 
-set platformLinkSettings=/link user32.lib gdi32.lib opengl32.lib /incremental:no
+set platformLinkSettings=/link user32.lib gdi32.lib opengl32.lib /incremental:no /STACK:0x100000,0x100000 
 
 set exports=/EXPORT:Game_UpdateAndRender /EXPORT:Game_Start /EXPORT:Game_End
-set gameLinkSettings=/link %exports% /DLL /out:%game% /incremental:no
+set gameLinkSettings=/link %exports% /DLL /out:%game% /incremental:no /STACK:0x100000,0x100000 
 
-set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996 /wd4505
+set warnings=/W4 /WX /wd4201 /wd4100 /wd4189 /wd4996 /wd4505 /wd4273
 REM -Wno-unused-function -Wno-unused-variable
 
 if %compiler%==clang-cl (
@@ -29,7 +29,7 @@ if %compiler%==clang-cl (
 	set defaultCompilerFlags=%defaultCompilerFlags% -fdiagnostics-absolute-paths -O2
 )
 
-set defines=/DSTRETCH /DHIDE_CURSOR /DCOMPILER_MSVC
+set defines=/DCOMPILER_MSVC
  
 set platformCode=..\engine\ADarkEngine\win32\win32_platform.cpp
 set gameCode=..\src\game.cpp

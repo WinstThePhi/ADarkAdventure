@@ -1,12 +1,7 @@
-
 //#define ERROR_LOG_PATH "../data/platform_error.txt"
 #define INFO_TO_STDOUT
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <GL/gl.h>
-
-#include "ADarkEngine/win32/platform.h"
+#include "win32/win32_platform_include.h"
 
 #ifndef WIDTH
 #error "WIDTH is not defined.  Check game_options.h for define."
@@ -29,28 +24,11 @@
 #endif 
 
 global game_state globalGameState = {};
-global win32_back_buffer globalWin32BackBuffer = {};
 global WINDOWPLACEMENT g_wpPrev = {};
-global memory_arena arena = {};
-global worker_thread_queue workerThreadQueue = {};
-global LARGE_INTEGER performanceFrequency = {};
-global back_buffer backBuffer = {};
-
-internal f32 
-GetTime_MS()
-{
-    LARGE_INTEGER time;
-    QueryPerformanceCounter(&time);
-    
-    f64 MS_elapsed = 
-        ((f64)time.QuadPart / (f64)performanceFrequency.QuadPart);
-    MS_elapsed *= 1000;
-    
-    return (f32)MS_elapsed;
-}
+global os_call os = {};
 
 internal void 
-ToggleFullscreen(HWND window)
+Win32_ToggleFullscreen(HWND window)
 {
     g_wpPrev.length = sizeof(g_wpPrev);
     
@@ -110,9 +88,8 @@ Win32_GetFileLastModifiedTime(char* filename)
 }
 
 internal game_code
-Win32_LoadGameCode(memory_arena* localArena, 
-                   char* dllName,
-                   worker_thread_queue* queue)
+Win32_LoadGameCode(memory_arena& localArena, 
+                   char* dllName)
 {
     game_code gameCodeLoad;
     
@@ -149,9 +126,8 @@ Win32_LoadGameCode(memory_arena* localArena,
         gameCodeLoad.Game_End = Game_EndStub;
     }
     
-    gameCodeLoad.Game_Start(&globalGameState,
-                            localArena,
-                            queue);
+    gameCodeLoad.Game_Start(globalGameState,
+                            localArena);
     
     gameCodeLoad.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
     
@@ -159,20 +135,17 @@ Win32_LoadGameCode(memory_arena* localArena,
 }
 
 internal void
-Win32_UnloadGameCode(game_code* gameCode,
-                     memory_arena* localArena,
-                     worker_thread_queue* queue)
+Win32_UnloadGameCode(game_code& gameCode,
+                     memory_arena& localArena)
 {
-    gameCode->Game_End(&globalGameState,
-                       localArena,
-                       queue);
+    gameCode.Game_End(globalGameState,
+                      localArena);
     
-    FreeLibrary(gameCode->gameCode);
-    gameCode->gameCode = 0;
-    gameCode->Game_UpdateAndRender = Game_UpdateAndRenderStub;
-    gameCode->Game_Start = Game_StartStub;
-    gameCode->Game_End = Game_EndStub;
-    
+    FreeLibrary(gameCode.gameCode);
+    gameCode.gameCode = 0;
+    gameCode.Game_UpdateAndRender = Game_UpdateAndRenderStub;
+    gameCode.Game_Start = Game_StartStub;
+    gameCode.Game_End = Game_EndStub;
 }
 
 internal window_dimensions
@@ -189,35 +162,17 @@ Win32_GetWindowDimensions(HWND window)
     return dimension;
 }
 
-internal win32_back_buffer
-new_back_buffer(memory_arena* localArena,
-                u16 width, 
-                u16 height)
+internal void*
+Win32_ClearWindow()
 {
-    win32_back_buffer win32BackBuffer = {};
-    
-    win32BackBuffer.width = width;
-    win32BackBuffer.height = height;
-    
-    win32BackBuffer.bitmapInfo.bmiHeader.biSize = sizeof(win32BackBuffer.bitmapInfo.bmiHeader);
-    win32BackBuffer.bitmapInfo.bmiHeader.biWidth = win32BackBuffer.width;
-    win32BackBuffer.bitmapInfo.bmiHeader.biHeight = -win32BackBuffer.height;
-    win32BackBuffer.bitmapInfo.bmiHeader.biPlanes = 1;
-    win32BackBuffer.bitmapInfo.bmiHeader.biBitCount = 32;
-    win32BackBuffer.bitmapInfo.bmiHeader.biCompression = BI_RGB;
-    
-    u32 sizeToAlloc = width * height * BYTES_PER_PIXEL;
-    win32BackBuffer.memory = ArenaAlloc(localArena, sizeToAlloc);
-    win32BackBuffer.pitch = width * BYTES_PER_PIXEL;
-    
-    return win32BackBuffer;
+    return 0;
 }
 
 internal void*
 Win32_UpdateWindow(void* temp)
 {
     HDC* hdc = (HDC*)temp;
-    SwapBuffers(*hdc);
+    wglSwapLayerBuffers(*hdc, WGL_SWAP_MAIN_PLANE);
     return 0;
 }
 
@@ -260,14 +215,6 @@ Win32_DefaultWindowCallback(HWND window,
             HDC paintDC = BeginPaint(window,
                                      &paintStruct);
             
-            window_update_group* updateGroup = 
-                WT_PushStruct(&workerThreadQueue.parameterStorage, 
-                              window_update_group);
-#if 0
-            WT_PushQueue(&workerThreadQueue,
-                         Win32_UpdateWindow,
-                         updateGroup);
-#endif
             Win32_UpdateWindow(&paintDC);
             EndPaint(window,
                      &paintStruct);
@@ -323,12 +270,17 @@ case VK_##keyID: \
 keyCode = KEY_##keyID; \
 } break;
                         
-#include "ADarkEngine/key_list.inc"
+#include "key_list.inc"
 #undef Key
                     }
                     
                     if(isDown)
                     {
+                        if(keyCode == KEY_F11)
+                        {
+                            Win32_ToggleFullscreen(window);
+                        }
+                        
                         PushOSEvent(&globalGameState.eventList,
                                     KeyEvent(keyCode, KEY_PRESS));
                     }
@@ -370,7 +322,6 @@ GenerateOSCalls()
     
     result.GetTime_MS = GetTime_MS;
     result.ThreadSleep = ThreadSleep;
-    result.LoadOpenGLProcedure = Win32_LoadOpenGLProcedure;
     
     return result;
 }
@@ -399,17 +350,7 @@ i32 WinMain(HINSTANCE hInstance,
         QUIT();
     }
     
-    arena = new_arena(memory, BIG_BOI_ALLOC_SIZE);
-    
-    if(!arena.size)
-    {
-        DE_LogError("Failed to create memory arena.");
-        
-        VirtualFree(memory, 0, MEM_RELEASE);
-        QUIT();
-    }
-    
-    globalWin32BackBuffer = new_back_buffer(&arena, WIDTH, HEIGHT);
+    memory_arena arena(memory, BIG_BOI_ALLOC_SIZE);
     
     WNDCLASSA windowClass = {};
     windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -422,16 +363,11 @@ i32 WinMain(HINSTANCE hInstance,
     
     if(RegisterClass(&windowClass))
     {
-        DWORD dwStyle = (WS_OVERLAPPED | WS_CAPTION | 
-                         WS_SYSMENU | WS_MINIMIZEBOX | 
-#ifdef MAXIMIZE
-                         WS_MAXIMIZEBOX | 
-#endif
-                         WS_VISIBLE);
+        DWORD dwStyle = (WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_THICKFRAME);
         
         HWND window = 
             CreateWindowExA(0,
-                            "Window Class",
+                            windowClass.lpszClassName,
                             WINDOW_TITLE,
                             dwStyle,
                             CW_USEDEFAULT,
@@ -446,45 +382,16 @@ i32 WinMain(HINSTANCE hInstance,
         if(window)
         {
             DWORD threadContext = 0;
-            
+#if 0
+            worker_thread_queue* queue = Win32_NewWorkerThreadQueue(&arena);
+            Win32_DestroyWorkerThreadQueue(queue);
+#endif 
             os = GenerateOSCalls();
             
-            workerThreadQueue = 
-                new_worker_thread_queue(&arena);
-            
-            workerThreadQueue.osCall = os;
-            
-#define WIN32_THREAD_FUNC_TEMPLATE DWORD (__cdecl*)(void*)
-#if 0
-            HANDLE workerThread = 
-                CreateThread(0,
-                             0,
-                             (WIN32_THREAD_FUNC_TEMPLATE)WT_ProcessWorkQueue,
-                             (void*)&workerThreadQueue,
-                             0,
-                             &threadContext);
-#endif
-#undef WIN32_THREAD_FUNC_TEMPLATE
-            
             globalGameState.isRunning = 1;
-            globalGameState.eventList = GenerateEventList(&arena, 64);
-            
+            globalGameState.eventList = GenerateEventList(arena, 64);
             
             // NOTE(winston): backBuffer member fill out
-            backBuffer.memory = globalWin32BackBuffer.memory;
-            backBuffer.height = globalWin32BackBuffer.height;
-            backBuffer.width = globalWin32BackBuffer.width;
-            backBuffer.pitch = globalWin32BackBuffer.pitch;
-            backBuffer.bytesPerPixel = 4;
-            
-            render_group renderGroup = 
-            {
-                &arena, 
-                &workerThreadQueue, 
-                &backBuffer
-            };
-            
-            globalGameState.renderGroup = renderGroup;
             
             HDC hdc = GetDC(window);
             
@@ -492,40 +399,27 @@ i32 WinMain(HINSTANCE hInstance,
             
             globalGameState.fpsCap = FRAME_CAP;
             
-            if(Win32_InitOpenGL(window, hInstance))
-            {
-                DE_LogInfo("OpenGL successfully initialized.");
-            }
-            else
-            {
-                DE_LogError("OpenGL failed to be initialized.");
-                VirtualFree(memory, 0, MEM_RELEASE);
-                QUIT();
-            }
-            
-            game_code gameCode = Win32_LoadGameCode(&arena,
-                                                    dllName,
-                                                    &workerThreadQueue);
+            game_code gameCode = Win32_LoadGameCode(arena,
+                                                    dllName);
             
             gameCode.lastWriteTime = Win32_GetFileLastModifiedTime(dllName);
             f32 msCap = (1000.0f / (f32)FRAME_CAP);
             
             window_group* windowGroup = 
-                Arena_PushStruct(&arena, window_group);
+                Arena_PushStruct(arena, window_group);
             
             windowGroup->window = window;
             
-            timer_info timer = new_timer_info(performanceFrequency);
-            
-            glViewport(0, 0, 
-                       globalWin32BackBuffer.width, globalWin32BackBuffer.height);
+            timer_info timer = new_timer_info();
             
             while(globalGameState.isRunning)
             {
                 Win32_BeginFrame(&timer);
                 
-                glClearColor(0.129f, 0.586f, 0.949f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
+                window_dimensions dimension = 
+                    Win32_GetWindowDimensions(window);
+                
+                Win32_ClearWindow();
                 
                 FILETIME currentWriteTime = 
                     Win32_GetFileLastModifiedTime(dllName);
@@ -533,24 +427,17 @@ i32 WinMain(HINSTANCE hInstance,
                 if(CompareFileTime(&gameCode.lastWriteTime,
                                    &currentWriteTime))
                 {
-                    Win32_UnloadGameCode(&gameCode,
-                                         &arena,
-                                         &workerThreadQueue);
-                    gameCode = Win32_LoadGameCode(&arena,
-                                                  dllName,
-                                                  &workerThreadQueue);
+                    Win32_UnloadGameCode(gameCode,
+                                         arena);
+                    gameCode = Win32_LoadGameCode(arena,
+                                                  dllName);
                 }
                 
                 Win32_ProcessMessageQueue((void*)windowGroup);
-                
                 ProcessOSMessages(&globalGameState);
                 
-                gameCode.Game_UpdateAndRender(&globalGameState,
-                                              &arena,
-                                              &workerThreadQueue);
-                
-                window_dimensions dimension = 
-                    Win32_GetWindowDimensions(window);
+                gameCode.Game_UpdateAndRender(globalGameState,
+                                              arena);
                 
                 Win32_UpdateWindow(&hdc);
                 
@@ -559,15 +446,11 @@ i32 WinMain(HINSTANCE hInstance,
             
             DestroyWindow(window);
             
-            workerThreadQueue.isRunning = 0;
 #if 0
             WaitForSingleObject(workerThread, INFINITE);
 #endif
-            Win32_UnloadGameCode(&gameCode,
-                                 &arena,
-                                 &workerThreadQueue);
-            
-            Win32_CleanUpOpenGL(window);
+            Win32_UnloadGameCode(gameCode,
+                                 arena);
             
             ReleaseDC(window, hdc);
         }
@@ -582,6 +465,8 @@ i32 WinMain(HINSTANCE hInstance,
     }
     
     VirtualFree(arena.memory, 0, MEM_RELEASE);
+    
+    DE_LogInfo("All memory has been freed and program ended without a crash.");
     
     return 0;
 }
