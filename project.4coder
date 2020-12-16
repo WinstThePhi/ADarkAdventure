@@ -1,0 +1,68 @@
+version(1);
+project_name = "A Dark Adventure";
+
+patterns = 
+{
+	"*.c",
+	"*.cpp",
+	"*.h",
+	"*.m",
+	"*.bat",
+	"*.sh",
+	"*.4coder",
+	".gitignore",
+	"*.inc",
+	"*.hlsl"
+};
+
+blacklist_patterns = 
+{
+	".*",
+};
+
+load_paths_base = 
+{
+	{ ".", .relative = true, .recursive = true, },
+};
+
+load_paths = 
+{
+	{ load_paths_base, .os = "win", },
+	{ load_paths_base, .os = "linux", },
+	{ load_paths_base, .os = "mac", },
+};
+
+command_list = 
+{
+	{ .name = "code_generator compilation",
+		.out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+		.cmd = { { "build generator" , .os = "win"   },
+            	 { "./build.sh", .os = "linux" },
+            	 { "./build.sh", .os = "mac"   }, }, },
+	{ .name = "code_generator run",
+		.out = "*run*", .footer_panel = true, .save_dirty_files = false,
+		.cmd = { { "test" , .os = "win"   },
+            	 { "./build.sh", .os = "linux" },
+            	 { "./build.sh", .os = "mac"   }, }, },
+	{ .name = "reload",
+		.out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+		.cmd = { { "build reload" , .os = "win"   },
+            	 { "./build.sh", .os = "linux" },
+            	 { "./build.sh", .os = "mac"   }, }, },
+	{ .name = "build",
+		.out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+		.cmd = { { "build" , .os = "win"   },
+            	 { "./build.sh", .os = "linux" },
+            	 { "./build.sh", .os = "mac"   }, }, },
+    { .name = "run",
+   	 .out = "*run*", .footer_panel = true, .save_dirty_files = false,
+   	 .cmd = { { "run", .os = "win"   },
+            	 { "build/win32_platform.exe" , .os = "linux" },
+            	 { "build/win32_platform.exe" , .os = "mac"   }, }, },
+};
+
+fkey_command[1] = "code_generator compilation";
+fkey_command[2] = "code_generator run";
+fkey_command[3] = "reload";
+fkey_command[4] = "build";
+fkey_command[5] = "run";
